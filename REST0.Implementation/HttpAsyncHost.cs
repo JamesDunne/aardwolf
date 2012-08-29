@@ -51,24 +51,30 @@ namespace REST0.Implementation
             foreach (var prefix in uriPrefixes)
                 _listener.Prefixes.Add(prefix);
 
-            // Initialize the handler:
-            var init = (InitializeOnceTrait)_handler.Traits.SingleOrDefault(t => t is InitializeOnceTrait);
-            if (init != null)
-                init.Initialize(_hostContext);
-
-            // Start the HTTP listener:
-            _listener.Start();
-
-            // Keep our connection-open queue running:
-            while (_listener.IsListening)
+            Task.Run(async () =>
             {
-                // Accept a request:
-                _listener.BeginGetContext(new AsyncCallback(ProcessNewContext), this);
-                // Wait for an open spot in the open-connection queue:
-                _gate.WaitOne();
-            }
+                // Initialize the handler:
+                var init = (InitializeOnceTrait)_handler.Traits.SingleOrDefault(t => t is InitializeOnceTrait);
+                if (init != null)
+                {
+                    var task = init.Initialize(_hostContext);
+                    if (task != null) await task;
+                }
 
-            _listener.Stop();
+                // Start the HTTP listener:
+                _listener.Start();
+
+                // Keep our connection-open queue running:
+                while (_listener.IsListening)
+                {
+                    // Accept a request:
+                    _listener.BeginGetContext(new AsyncCallback(ProcessNewContext), this);
+                    // Wait for an open spot in the open-connection queue:
+                    _gate.WaitOne();
+                }
+
+                _listener.Stop();
+            }).Wait();
         }
 
         static async void ProcessNewContext(IAsyncResult ar)

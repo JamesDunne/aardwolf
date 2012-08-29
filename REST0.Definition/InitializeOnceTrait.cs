@@ -16,6 +16,6 @@ namespace REST0.Definition
     {
         public virtual string Name { get { return "InitializeOnce"; } }
 
-        public abstract void Initialize(IHttpAsyncHostHandlerContext context);
+        public abstract Task Initialize(IHttpAsyncHostHandlerContext context);
     }
 }

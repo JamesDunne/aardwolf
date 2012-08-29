@@ -15,7 +15,7 @@ namespace REST0.APIService
         {
             var host = new HttpAsyncHost(new APIHttpAsyncHandler(), maxConnectionQueue);
 
-            host.Run("http://*:80/");
+            host.Run("http://*/");
         }
     }
 }

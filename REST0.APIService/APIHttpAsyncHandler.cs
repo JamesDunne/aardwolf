@@ -27,7 +27,7 @@ namespace REST0.APIService
         // Our initialization trait.
         class Initialization : InitializeOnceTrait
         {
-            public override void Initialize(IHttpAsyncHostHandlerContext context)
+            public override async Task Initialize(IHttpAsyncHostHandlerContext context)
             {
                 var self = (APIHttpAsyncHandler)context.Handler;
             }
