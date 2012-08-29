@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
 
-namespace REST0
+namespace REST0.Implementation
 {
     public sealed class HttpAsyncHost : IHttpAsyncHost
     {
@@ -71,8 +71,9 @@ namespace REST0
             var action = await host._handler.Execute(new HttpRequestState(listenerContext.Request, listenerContext.User));
             if (action != null)
             {
-                // Take the action:
-                await action.Execute(new HttpRequestResponseState(listenerContext.Request, listenerContext.User, listenerContext.Response));
+                // Take the action and await its completion:
+                var task = action.Execute(new HttpRequestResponseState(listenerContext.Request, listenerContext.User, listenerContext.Response));
+                if (task != null) await task;
             }
 
             // Close the response and send it to the client:

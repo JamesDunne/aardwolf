@@ -5,7 +5,7 @@ using System.Text;
 using REST0.Definition;
 using REST0.Implementation;
 
-namespace REST0
+namespace REST0.APIService
 {
     class Program
     {
@@ -13,7 +13,7 @@ namespace REST0
 
         static void Main(string[] args)
         {
-            var host = new HttpAsyncHost(null, maxConnectionQueue);
+            var host = new HttpAsyncHost(new APIHttpAsyncHandler(), maxConnectionQueue);
 
             host.Run("http://*:80/");
         }

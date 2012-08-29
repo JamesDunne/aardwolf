@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace REST0
+namespace REST0.Implementation
 {
     public sealed class NullHttpAsyncHandler : IHttpAsyncHandler
     {
