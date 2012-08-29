@@ -16,7 +16,7 @@ namespace REST0.APIService
     public sealed class APIHttpAsyncHandler : IHttpAsyncHandler, IInitializationTrait, IConfigurationTrait
     {
         ConfigurationDictionary localConfig;
-        JsonValue serviceConfig;
+        SHA1Hashed<JsonValue> _serviceConfig;
 
         public async Task Configure(IHttpAsyncHostHandlerContext hostContext, ConfigurationDictionary configValues)
         {
@@ -27,7 +27,7 @@ namespace REST0.APIService
         public async Task Initialize(IHttpAsyncHostHandlerContext context)
         {
             // Initialize gets called after Configure.
-            serviceConfig = await GetConfigData();
+            await RefreshConfigData();
 
             // Let a background task refresh the config data every 10 seconds:
 #pragma warning disable 4014
@@ -36,19 +36,28 @@ namespace REST0.APIService
                 while (true)
                 {
                     // Wait until the next even 10-second mark on the clock:
+                    const long sec10 = TimeSpan.TicksPerSecond * 10;
                     var now = DateTime.UtcNow;
-                    var sec10 = TimeSpan.TicksPerSecond * 10;
                     var next10 = new DateTime(((now.Ticks + sec10) / sec10) * sec10, DateTimeKind.Utc);
                     await Task.Delay(next10.Subtract(now));
 
                     // Refresh config data:
-                    serviceConfig = await GetConfigData();
+                    await RefreshConfigData();
                 }
             });
 #pragma warning restore 4014
         }
 
-        private async Task<JsonValue> GetConfigData()
+        async Task RefreshConfigData()
+        {
+            // Get the latest config data:
+            var config = await FetchConfigData();
+            if (config == null) return;
+
+            _serviceConfig = config;
+        }
+
+        async Task<SHA1Hashed<JsonValue>> FetchConfigData()
         {
             string url, path;
 
@@ -56,32 +65,37 @@ namespace REST0.APIService
             if (localConfig.TryGetSingleValue("config.Url", out url))
             {
                 Trace.WriteLine("Getting config data via HTTP");
+
                 // Fire off a request now to our configuration server for our config data:
                 try
                 {
                     var req = HttpWebRequest.CreateHttp(url);
                     using (var rsp = await req.GetResponseAsync())
                     using (var rspstr = rsp.GetResponseStream())
-                        return JsonValue.Load(rspstr);
+                    using (var sha1 = new SHA1StreamReader(rspstr))
+                        return new SHA1Hashed<JsonValue>(JsonValue.Load(sha1), sha1.GetHash());
                 }
                 catch (Exception ex)
                 {
                     Trace.WriteLine(ex.ToString());
+
+                    // Fall back on loading a local file:
                     goto loadFile;
                 }
             }
 
-            // Fall back on loading a local file:
         loadFile:
             if (localConfig.TryGetSingleValue("config.Path", out path))
             {
                 Trace.WriteLine("Getting config data via file");
+
                 // Load the local JSON file:
                 try
                 {
                     using (var fs = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    using (var tr = new StreamReader(fs, true))
-                        return JsonValue.Load(tr);
+                    using (var sha1 = new SHA1StreamReader(fs))
+                    using (var tr = new StreamReader(sha1, true))
+                        return new SHA1Hashed<JsonValue>(JsonValue.Load(tr), sha1.GetHash());
                 }
                 catch (Exception ex)
                 {
@@ -102,12 +116,15 @@ namespace REST0.APIService
         public async Task<IHttpResponseAction> Execute(IHttpRequestContext context)
         {
             // Capture the current service configuration values only once per connection in case they update during:
-            var config = serviceConfig;
+            var config = _serviceConfig;
 
             if (context.Request.Url.AbsolutePath == "/")
                 return new RedirectResponse("/foo");
 
-            return new JsonResponse(config);
+            return new JsonResponse(new JsonObject() {
+                { "hash", config.HashHexString },
+                { "config", config.Value }
+            });
         }
     }
 }

@@ -9,7 +9,7 @@ namespace REST0.APIService
 {
     class Program
     {
-        const int maxConnectionQueue = 100;
+        const int maxConnectionQueue = 10000;
 
         static void Main(string[] args)
         {

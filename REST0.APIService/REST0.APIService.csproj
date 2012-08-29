@@ -45,6 +45,7 @@
     <Compile Include="APIHttpAsyncHandler.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SHA1Hashed.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\REST0.Definition\REST0.Definition.csproj">

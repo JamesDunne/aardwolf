@@ -8,6 +8,7 @@ using REST0.Definition;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.IO;
 
 namespace REST0.Implementation
 {
@@ -116,22 +117,34 @@ namespace REST0.Implementation
 
             Debug.Assert(listenerContext != null);
 
-            // Get the response action to take:
-            var requestContext = new HttpRequestContext(host._hostContext, listenerContext.Request, listenerContext.User);
-            var action = await host._handler.Execute(requestContext);
-            if (action != null)
+            try
             {
-                // Take the action and await its completion:
-                var responseContext = new HttpRequestResponseContext(requestContext, listenerContext.Response);
-                var task = action.Execute(responseContext);
-                if (task != null) await task;
+                // Get the response action to take:
+                var requestContext = new HttpRequestContext(host._hostContext, listenerContext.Request, listenerContext.User);
+                var action = await host._handler.Execute(requestContext);
+                if (action != null)
+                {
+                    // Take the action and await its completion:
+                    using (var responseContext = new HttpRequestResponseContext(requestContext, listenerContext.Response))
+                    {
+                        var task = action.Execute(responseContext);
+                        if (task != null) await task;
+                    }
+                }
+
+                // Close the response and send it to the client:
+                listenerContext.Response.Close();
             }
-
-            // Close the response and send it to the client:
-            listenerContext.Response.Close();
-
-            // Release the semaphore to allow a new connection:
-            host._gate.Release();
+            catch (Exception ex)
+            {
+                // TODO: better exception handling
+                Trace.WriteLine(ex.ToString());
+            }
+            finally
+            {
+                // We must always release the semaphore when terminating a connection:
+                host._gate.Release();
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ namespace REST0.Definition
     {
         readonly Dictionary<string, List<string>> _values;
 
-        internal ConfigurationDictionary(Dictionary<string, List<string>> values)
+        public ConfigurationDictionary(Dictionary<string, List<string>> values)
         {
             _values = values;
         }
