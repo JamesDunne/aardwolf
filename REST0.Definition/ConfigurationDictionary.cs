@@ -76,5 +76,17 @@ namespace REST0.Definition
         {
             return _values.TryGetValue(key, out values);
         }
+
+        public bool TryGetSingleValue(string key, out string value)
+        {
+            value = null;
+            List<string> list;
+            if (!_values.TryGetValue(key, out list)) return false;
+
+            if (list.Count > 1)
+                throw new Exception(String.Format("Configuration key '{0}' has more than one value", key));
+            value = list[0];
+            return true;
+        }
     }
 }

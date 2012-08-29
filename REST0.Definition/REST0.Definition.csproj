@@ -36,6 +36,9 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Json">
+      <HintPath>..\packages\System.Json.4.0.20126.16343\lib\net40\System.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System.Net" />
     <Reference Include="System.Data" />
   </ItemGroup>
@@ -49,8 +52,13 @@
     <Compile Include="IHttpAsyncHost.cs" />
     <Compile Include="IHttpResponseAction.cs" />
     <Compile Include="IInitializationTrait.cs" />
+    <Compile Include="JsonResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RedirectResponse.cs" />
+    <Compile Include="UTF8Encoding.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
