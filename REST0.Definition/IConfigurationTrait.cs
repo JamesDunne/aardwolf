@@ -8,6 +8,6 @@ namespace REST0.Definition
 {
     public interface IConfigurationTrait
     {
-        Task Configure(IHttpAsyncHostHandlerContext hostContext, Dictionary<string, List<string>> configValues);
+        Task Configure(IHttpAsyncHostHandlerContext hostContext, ConfigurationDictionary configValues);
     }
 }
