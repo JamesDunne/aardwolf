@@ -77,9 +77,17 @@ namespace REST0.APIService
             {
                 Trace.WriteLine("Getting config data via file");
                 // Load the local JSON file:
-                using (var fs = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-                using (var tr = new StreamReader(fs, true))
-                    return JsonValue.Load(tr);
+                try
+                {
+                    using (var fs = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    using (var tr = new StreamReader(fs, true))
+                        return JsonValue.Load(tr);
+                }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine(ex.ToString());
+                    return null;
+                }
             }
 
             // If all else fails, complain:
