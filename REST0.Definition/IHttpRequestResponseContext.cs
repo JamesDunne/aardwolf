@@ -19,5 +19,6 @@ namespace REST0.Definition
         HttpListenerResponse Response { get; }
 
         Stream OutputStream { get; }
+        TextWriter Output { get; }
     }
 }

@@ -15,7 +15,7 @@ namespace REST0.Implementation
     public sealed class HttpAsyncHost : IHttpAsyncHost
     {
         HttpListener _listener;
-        ManualResetEvent _gate;
+        Semaphore _gate;
         IHttpAsyncHandler _handler;
         HostContext _hostContext;
         ConfigurationDictionary _configValues;
@@ -24,7 +24,7 @@ namespace REST0.Implementation
         {
             _handler = handler ?? NullHttpAsyncHandler.Default;
             _listener = new HttpListener();
-            _gate = new ManualResetEvent(false);
+            _gate = new Semaphore(maxConnectionQueue, maxConnectionQueue);
         }
 
         class HostContext : IHttpAsyncHostHandlerContext
@@ -82,10 +82,16 @@ namespace REST0.Implementation
                 // Start the HTTP listener:
                 _listener.Start();
 
-                // Start accepting requests:
-                _listener.BeginGetContext(new AsyncCallback(ProcessNewContext), this);
+                // Keep our connection-open queue running:
+                while (_listener.IsListening)
+                {
+                    // Accept a request:
+                    _listener.BeginGetContext(new AsyncCallback(ProcessNewContext), this);
+                    // Wait for an open spot in the open-connection queue:
+                    _gate.WaitOne();
+                }
 
-                _gate.WaitOne();
+                _listener.Stop();
             }).Wait();
         }
 
@@ -98,14 +104,14 @@ namespace REST0.Implementation
             {
                 // Get the context:
                 listenerContext = host._listener.EndGetContext(ar);
-
-                // Immediately set up the next context:
-                host._listener.BeginGetContext(ProcessNewContext, host);
             }
             catch (Exception ex)
             {
                 // TODO: better exception handling
                 Trace.WriteLine(ex.ToString());
+
+                // We must always release the semaphore when terminating a connection:
+                host._gate.Release();
                 return;
             }
 
@@ -131,6 +137,11 @@ namespace REST0.Implementation
             {
                 // TODO: better exception handling
                 Trace.WriteLine(ex.ToString());
+            }
+            finally
+            {
+                // We must always release the semaphore when terminating a connection:
+                host._gate.Release();
             }
         }
     }
