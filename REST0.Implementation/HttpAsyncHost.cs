@@ -17,6 +17,7 @@ namespace REST0.Implementation
         Semaphore _gate;
         IHttpAsyncHandler _handler;
         HostContext _hostContext;
+        Dictionary<string, List<string>> _configValues;
 
         public HttpAsyncHost(IHttpAsyncHandler handler, int maxConnectionQueue)
         {
@@ -42,6 +43,11 @@ namespace REST0.Implementation
             get { return _listener.Prefixes.ToList(); }
         }
 
+        public void SetConfigValues(Dictionary<string, List<string>> values)
+        {
+            _configValues = values;
+        }
+
         public void Run(params string[] uriPrefixes)
         {
             // Establish a host-handler context:
@@ -53,8 +59,16 @@ namespace REST0.Implementation
 
             Task.Run(async () =>
             {
+                // Configure the handler:
+                var config = _handler as IConfigurationTrait;
+                if (config != null)
+                {
+                    var task = config.Configure(_hostContext, new Dictionary<string, List<string>>(_configValues, _configValues.Comparer));
+                    if (task != null) await task;
+                }
+
                 // Initialize the handler:
-                var init = (InitializeOnceTrait)_handler.Traits.SingleOrDefault(t => t is InitializeOnceTrait);
+                var init = _handler as IInitializationTrait;
                 if (init != null)
                 {
                     var task = init.Initialize(_hostContext);

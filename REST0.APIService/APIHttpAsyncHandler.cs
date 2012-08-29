@@ -9,28 +9,22 @@ using System.Threading.Tasks;
 
 namespace REST0.APIService
 {
-    public sealed class APIHttpAsyncHandler : IHttpAsyncHandler
+    public sealed class APIHttpAsyncHandler : IHttpAsyncHandler, IInitializationTrait, IConfigurationTrait
     {
-        readonly InitializeOnceTrait _init = new Initialization();
+        Dictionary<string, List<string>> _config;
+        Task _getConfig;
 
-        /// <summary>
-        /// Return our traits.
-        /// </summary>
-        public IEnumerable<ITrait> Traits
+        public async Task Configure(IHttpAsyncHostHandlerContext hostContext, Dictionary<string, List<string>> configValues)
         {
-            get
-            {
-                yield return _init;
-            }
+            _config = configValues;
         }
 
-        // Our initialization trait.
-        class Initialization : InitializeOnceTrait
+        public async Task Initialize(IHttpAsyncHostHandlerContext context)
         {
-            public override async Task Initialize(IHttpAsyncHostHandlerContext context)
-            {
-                var self = (APIHttpAsyncHandler)context.Handler;
-            }
+            // We can fire off a request now to our configuration server for our config data:
+            // Pretend with a delay of 10 seconds for now:
+            _getConfig = Task.Delay(TimeSpan.FromSeconds(5d));
+            _config["config.Url"].First();
         }
 
         /// <summary>
@@ -40,6 +34,13 @@ namespace REST0.APIService
         /// <returns></returns>
         public async Task<IHttpResponseAction> Execute(IHttpRequestContext context)
         {
+            // Wait for our config data to arrive first:
+            if (_getConfig != null)
+            {
+                await _getConfig;
+                _getConfig = null;
+            }
+
             if (context.Request.Url.AbsolutePath != "/")
                 return null;
 
