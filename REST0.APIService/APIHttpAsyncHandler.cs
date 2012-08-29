@@ -30,14 +30,22 @@ namespace REST0.APIService
             serviceConfig = await GetConfigData();
 
             // Let a background task refresh the config data every 10 seconds:
+#pragma warning disable 4014
             Task.Run(async () =>
             {
                 while (true)
                 {
-                    await Task.Delay(10000);
+                    // Wait until the next even 10-second mark on the clock:
+                    var now = DateTime.UtcNow;
+                    var sec10 = TimeSpan.TicksPerSecond * 10;
+                    var next10 = new DateTime(((now.Ticks + sec10) / sec10) * sec10, DateTimeKind.Utc);
+                    await Task.Delay(next10.Subtract(now));
+
+                    // Refresh config data:
                     serviceConfig = await GetConfigData();
                 }
             });
+#pragma warning restore 4014
         }
 
         private async Task<JsonValue> GetConfigData()
@@ -85,10 +93,13 @@ namespace REST0.APIService
         /// <returns></returns>
         public async Task<IHttpResponseAction> Execute(IHttpRequestContext context)
         {
+            // Capture the current service configuration values only once per connection in case they update during:
+            var config = serviceConfig;
+
             if (context.Request.Url.AbsolutePath == "/")
                 return new RedirectResponse("/foo");
 
-            return new JsonResponse(serviceConfig);
+            return new JsonResponse(config);
         }
     }
 }

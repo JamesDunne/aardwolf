@@ -6,6 +6,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+#pragma warning disable 1998
+
 namespace REST0.Definition
 {
     public sealed class JsonResponse : IHttpResponseAction
