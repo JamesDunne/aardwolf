@@ -18,9 +18,9 @@ namespace REST0.Definition
             this.Url = url;
         }
 
-        public Task Execute(HttpRequestResponseState state)
+        public Task Execute(IHttpRequestResponseContext context)
         {
-            state.Response.Redirect(Url);
+            context.Response.Redirect(Url);
             return null;
         }
     }

@@ -15,8 +15,8 @@ namespace REST0.Definition
         /// <summary>
         /// Execute the intended response action against the Response.
         /// </summary>
-        /// <param name="state">The current connection's request/response state.</param>
+        /// <param name="context">The current connection's request/response context.</param>
         /// <returns>A task which represents an asynchronous operation to await or null if a synchronous operation already completed.</returns>
-        Task Execute(HttpRequestResponseState state);
+        Task Execute(IHttpRequestResponseContext context);
     }
 }

@@ -8,16 +8,21 @@ using System.Threading.Tasks;
 
 namespace REST0.Definition
 {
-    public sealed class HttpRequestResponseState
+    public sealed class HttpRequestResponseContext : IHttpRequestResponseContext
     {
+        public IHttpAsyncHostHandlerContext HostContext { get; private set; }
+
         public HttpListenerRequest Request { get; private set; }
         public IPrincipal User { get; private set; }
+
         public HttpListenerResponse Response { get; private set; }
 
-        public HttpRequestResponseState(HttpListenerRequest request, IPrincipal user, HttpListenerResponse response)
+        public HttpRequestResponseContext(IHttpRequestContext requestState, HttpListenerResponse response)
         {
-            Request = request;
-            User = user;
+            HostContext = requestState.HostContext;
+            Request = requestState.Request;
+            User = requestState.User;
+
             Response = response;
         }
     }

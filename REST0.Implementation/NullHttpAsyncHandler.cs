@@ -13,7 +13,12 @@ namespace REST0.Implementation
 
         private static readonly Task<IHttpResponseAction> NullTask = Task.FromResult<IHttpResponseAction>(null);
 
-        public Task<IHttpResponseAction> Execute(HttpRequestState state)
+        public IEnumerable<ITrait> Traits
+        {
+            get { yield break; }
+        }
+
+        public Task<IHttpResponseAction> Execute(IHttpRequestContext state)
         {
             return NullTask;
         }

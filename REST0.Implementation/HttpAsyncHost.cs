@@ -16,12 +16,25 @@ namespace REST0.Implementation
         HttpListener _listener;
         Semaphore _gate;
         IHttpAsyncHandler _handler;
+        HostContext _hostContext;
 
         public HttpAsyncHost(IHttpAsyncHandler handler, int maxConnectionQueue)
         {
             _handler = handler ?? NullHttpAsyncHandler.Default;
             _listener = new HttpListener();
             _gate = new Semaphore(maxConnectionQueue, maxConnectionQueue);
+        }
+
+        class HostContext : IHttpAsyncHostHandlerContext
+        {
+            public IHttpAsyncHost Host { get; private set; }
+            public IHttpAsyncHandler Handler { get; private set; }
+
+            public HostContext(IHttpAsyncHost host, IHttpAsyncHandler handler)
+            {
+                Host = host;
+                Handler = handler;
+            }
         }
 
         public List<string> Prefixes
@@ -31,14 +44,27 @@ namespace REST0.Implementation
 
         public void Run(params string[] uriPrefixes)
         {
+            // Establish a host-handler context:
+            _hostContext = new HostContext(this, _handler);
+
+            // Add the server bindings:
             foreach (var prefix in uriPrefixes)
                 _listener.Prefixes.Add(prefix);
 
+            // Initialize the handler:
+            var init = (InitializeOnceTrait)_handler.Traits.SingleOrDefault(t => t is InitializeOnceTrait);
+            if (init != null)
+                init.Initialize(_hostContext);
+
+            // Start the HTTP listener:
             _listener.Start();
 
+            // Keep our connection-open queue running:
             while (_listener.IsListening)
             {
+                // Accept a request:
                 _listener.BeginGetContext(new AsyncCallback(ProcessNewContext), this);
+                // Wait for an open spot in the open-connection queue:
                 _gate.WaitOne();
             }
 
@@ -68,11 +94,13 @@ namespace REST0.Implementation
             Debug.Assert(listenerContext != null);
 
             // Get the response action to take:
-            var action = await host._handler.Execute(new HttpRequestState(listenerContext.Request, listenerContext.User));
+            var requestContext = new HttpRequestContext(host._hostContext, listenerContext.Request, listenerContext.User);
+            var action = await host._handler.Execute(requestContext);
             if (action != null)
             {
                 // Take the action and await its completion:
-                var task = action.Execute(new HttpRequestResponseState(listenerContext.Request, listenerContext.User, listenerContext.Response));
+                var responseContext = new HttpRequestResponseContext(requestContext, listenerContext.Response);
+                var task = action.Execute(responseContext);
                 if (task != null) await task;
             }
 

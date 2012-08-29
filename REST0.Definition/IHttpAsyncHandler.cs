@@ -9,6 +9,16 @@ namespace REST0.Definition
 {
     public interface IHttpAsyncHandler
     {
-        Task<IHttpResponseAction> Execute(HttpRequestState state);
+        /// <summary>
+        /// Gets a set of traits of this handler.
+        /// </summary>
+        IEnumerable<ITrait> Traits { get; }
+
+        /// <summary>
+        /// Main execution method of the handler which returns an HTTP response intent.
+        /// </summary>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        Task<IHttpResponseAction> Execute(IHttpRequestContext state);
     }
 }

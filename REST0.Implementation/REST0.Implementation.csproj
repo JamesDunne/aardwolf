@@ -37,6 +37,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="HttpAsyncHost.cs" />
+    <Compile Include="HttpRequestContext.cs" />
+    <Compile Include="HttpRequestResponseContext.cs" />
+    <Compile Include="NullHttpAsyncHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
