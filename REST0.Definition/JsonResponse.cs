@@ -23,7 +23,10 @@ namespace REST0.Definition
         {
             context.Response.ContentType = "application/json; charset=utf-8";
             context.Response.ContentEncoding = UTF8Encoding.WithoutBOM;
-            _value.Save(context.Output);
+
+            using (context.Response.OutputStream)
+            using (var tw = new StreamWriter(context.Response.OutputStream, REST0.Definition.UTF8Encoding.WithoutBOM))
+                _value.Save(tw);
         }
     }
 }

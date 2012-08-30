@@ -119,11 +119,9 @@ namespace REST0.Implementation
                 if (action != null)
                 {
                     // Take the action and await its completion:
-                    using (var responseContext = new HttpRequestResponseContext(requestContext, listenerContext.Response))
-                    {
-                        var task = action.Execute(responseContext);
-                        if (task != null) await task;
-                    }
+                    var responseContext = new HttpRequestResponseContext(requestContext, listenerContext.Response);
+                    var task = action.Execute(responseContext);
+                    if (task != null) await task;
                 }
 
                 // Close the response and send it to the client:

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace REST0.Definition
 {
-    public sealed class HttpRequestResponseContext : IHttpRequestResponseContext, IDisposable
+    public sealed class HttpRequestResponseContext : IHttpRequestResponseContext
     {
         public IHttpAsyncHostHandlerContext HostContext { get; private set; }
 
@@ -19,7 +19,6 @@ namespace REST0.Definition
         public HttpListenerResponse Response { get; private set; }
 
         public Stream OutputStream { get { return Response.OutputStream; } }
-        public TextWriter Output { get; private set; }
 
         public HttpRequestResponseContext(IHttpRequestContext requestState, HttpListenerResponse response)
         {
@@ -28,12 +27,6 @@ namespace REST0.Definition
             User = requestState.User;
 
             Response = response;
-            Output = new StreamWriter(response.OutputStream, REST0.Definition.UTF8Encoding.WithoutBOM, 65536, true);
-        }
-
-        public void Dispose()
-        {
-            Output.Dispose();
         }
     }
 }
