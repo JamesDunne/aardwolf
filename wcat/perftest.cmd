@@ -1,0 +1,1 @@
+"%ProgramFiles(x86)%\wcat\wcat.wsf" -terminate -run -t script.ubr -s 192.168.1.102 -v 1000
