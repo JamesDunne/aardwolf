@@ -13,7 +13,7 @@ namespace REST0
 
         static void Main(string[] args)
         {
-            var host = new HttpAsyncHost(null, maxConnectionQueue);
+            var host = new HttpAsyncHost(null);
 
             host.Run("http://*:80/");
         }

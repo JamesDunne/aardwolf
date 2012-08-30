@@ -9,8 +9,6 @@ namespace REST0.APIService
 {
     class Program
     {
-        const int maxConnectionQueue = 10000;
-
         static void Main(string[] args)
         {
             // Parse the commandline arguments:
@@ -25,7 +23,7 @@ namespace REST0.APIService
             }
 
             // Create an HTTP host and start it:
-            var host = new HttpAsyncHost(new APIHttpAsyncHandler(), maxConnectionQueue);
+            var host = new HttpAsyncHost(new APIHttpAsyncHandler());
             host.SetConfiguration(configValues);
             host.Run(bindUriPrefixes.ToArray());
         }
