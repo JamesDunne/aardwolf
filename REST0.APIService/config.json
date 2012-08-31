@@ -1,1 +1,58 @@
-﻿{"test":1}
+﻿{
+    "?help": [
+        "This is a services descriptor configuration file encoded in human-readable JSON format.",
+        "The main 'services' section describes all versions of a set of services as aliases to the current versions of those services.",
+    ],
+    "services": {
+        "sis": {
+            "core":     "#sis.core!001",
+            "quad2":    "#sis.quad2!001"
+        }
+    },
+    "#": {
+        "sis": {
+            "#": {
+                "conns": {
+                    "sis": {
+                        "ds": "servername",
+                        "ic": "database"
+                    }
+                },
+                "params": {
+                    "StudentID": {
+                        "name": "@StudentID",
+                        "type": "int"
+                    }
+                },
+            },
+            "core!001": {
+                "#": {
+                    "vw": {
+                        "Student":      "ei_Student"
+                    },
+                    "cols": {
+                        "Student!st":   "st.StudentID, st.FirstName, st.LastName"
+                    }
+                },
+                "methods": {
+                    "GetStudent": {
+                        "params": {
+                            "id": "#params.StudentID"
+                        },
+                        "query": {
+                            "conn":     "#conns.sis",
+                            "from":     "{%vw.Student%} st",
+                            "where":    "st.StudentID = @StudentID",
+                            "select":   "st.StudentID AS __obj$Student, {%cols.Student!st%}"
+                        }
+                    }
+                }
+            },
+            "quad2!001": {
+                "base":   "#sis.core!001",
+                "methods": {
+                }
+            }
+        }
+    }
+}
