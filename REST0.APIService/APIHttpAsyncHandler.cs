@@ -18,6 +18,8 @@ namespace REST0.APIService
         ConfigurationDictionary localConfig;
         SHA1Hashed<JsonValue> _serviceConfig;
 
+        #region Handler configure and initialization
+
         public async Task Configure(IHttpAsyncHostHandlerContext hostContext, ConfigurationDictionary configValues)
         {
             // Configure gets called first.
@@ -48,6 +50,10 @@ namespace REST0.APIService
 #pragma warning restore 4014
         }
 
+        #endregion
+
+        #region Dealing with remote-fetch of configuration data
+
         async Task RefreshConfigData()
         {
             // Get the latest config data:
@@ -60,10 +66,12 @@ namespace REST0.APIService
         async Task<SHA1Hashed<JsonValue>> FetchConfigData()
         {
             string url, path;
+            bool noConfig = true;
 
             // Prefer to fetch over HTTP:
             if (localConfig.TryGetSingleValue("config.Url", out url))
             {
+                noConfig = false;
                 Trace.WriteLine("Getting config data via HTTP");
 
                 // Fire off a request now to our configuration server for our config data:
@@ -87,6 +95,7 @@ namespace REST0.APIService
         loadFile:
             if (localConfig.TryGetSingleValue("config.Path", out path))
             {
+                noConfig = false;
                 Trace.WriteLine("Getting config data via file");
 
                 // Load the local JSON file:
@@ -105,8 +114,15 @@ namespace REST0.APIService
             }
 
             // If all else fails, complain:
-            throw new Exception(String.Format("Either '{0}' or '{1}' configuration keys are required", "config.Url", "config.Path"));
+            if (noConfig)
+                throw new Exception(String.Format("Either '{0}' or '{1}' configuration keys are required", "config.Url", "config.Path"));
+
+            return null;
         }
+
+        #endregion
+
+        #region Main handler logic
 
         /// <summary>
         /// Main logic.
@@ -126,5 +142,7 @@ namespace REST0.APIService
                 { "config", config.Value }
             });
         }
+
+        #endregion
     }
 }

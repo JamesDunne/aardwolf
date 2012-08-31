@@ -4,6 +4,7 @@ obj
 
 # mstest test results
 TestResults
+wcat/*.xml
 
 *.suo
 *.user
