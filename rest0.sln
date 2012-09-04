@@ -1,8 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "REST0.TestNull", "rest0\REST0.TestNull.csproj", "{F5150371-DD64-415B-A386-EDD71F80157F}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "REST0.Definition", "REST0.Definition\REST0.Definition.csproj", "{E5622BC1-254B-4001-A02D-98652BE74D1E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "REST0.APIService", "REST0.APIService\REST0.APIService.csproj", "{BD145400-CB90-4EF7-90BF-9D5058D156BB}"
@@ -15,10 +13,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{F5150371-DD64-415B-A386-EDD71F80157F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F5150371-DD64-415B-A386-EDD71F80157F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F5150371-DD64-415B-A386-EDD71F80157F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F5150371-DD64-415B-A386-EDD71F80157F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E5622BC1-254B-4001-A02D-98652BE74D1E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E5622BC1-254B-4001-A02D-98652BE74D1E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E5622BC1-254B-4001-A02D-98652BE74D1E}.Release|Any CPU.ActiveCfg = Release|Any CPU

@@ -1,0 +1,139 @@
+﻿/*
+  This is a services descriptor configuration file encoded in a human-readable, extended JSON format with comments and multiline string literals.
+
+  A multiline string literal is defined as @"..." and has the same semantics as C#'s multiline string literal.
+  Comments may appear in block-format like this, or in single-line format like below.
+
+  This document concentrates on defining named entities. Entities may be reused to define parts of other entities by using entity references.
+  Entities are divided into logical namespaces. Each JSON key with an object value effectively introduces a new namespace using that key.
+
+  An entity reference is a string value which starts with a '#' and continues with either an absolute or relative path to an entity where each
+  namespace name is separated by a '/' character.
+
+  An absolute path always begins with a leading '/' character.
+  A relative path must not begin with a leading '/' character.
+  By default, relative paths look for the closest relative namespace.
+  Use '..' to explicitly traverse upwards in the namespace path.
+*/
+{
+    // This is the main services description section:
+    "services": {
+        "core": "#/svc/sis/core/001",
+        "quad": "#/svc/sis/quad/001",
+        "ku":   "#/svc/sis/ku/001"
+    },
+    // This is the root-level namespace "svc":
+    "svc": {
+        "sis": {
+            // This is where we hold shared values for SQL server connection information:
+            "conns": {
+                "sis": {
+                    // 'ds' is short for "Data Source"
+                    "ds": "servername",
+                    // 'ic' is short for "Initial Catalog"
+                    "ic": "database"
+                }
+            },
+            // This is the "core" namespace of the "sis" service offering:
+            "core": {
+                // This is where we define common SQL parameter types:
+                "params": {
+                    "StudentID": {
+                        "name": "@StudentID",
+                        "type": "int"
+                    }
+                },
+                // "001" is the first version of the core service:
+                "001": {
+                    // 'vw' is for defining SQL VIEW object names, in case we ever decide to version our database-stored objects:
+                    "vw": {
+                        "Student":  "ei_Student"
+                    },
+                    // 'cols' is for defining common column lists using specific view/table alias names:
+                    "cols": {
+                        // 'Student!st' is a list of the columns commonly selected from the 'Student' view using the 'st' alias prefix:
+                        "Student!st":   "st.StudentID, st.FirstName, st.LastName",
+                        // 'Student!st2' is a list of the columns commonly selected from the 'Student' view using the 'st2' alias prefix:
+                        "Student!st2":  "st2.StudentID, st2.FirstName, st2.LastName"
+                    },
+                    // This is the main method definition section:
+                    "methods": {
+                        // Each key is a specific method name; method names must be unique per version:
+                        "GetStudent": {
+                            // These are the query-string parameter names defined and which SQL query parameters they map to:
+                            "params": {
+                                "id": "#params/StudentID"
+                            },
+                            // The SQL connection string information:
+                            "conn":  "#/svc/sis/conns/sis",
+                            // The individual clauses of the SELECT query, appearing in any order:
+                            "query": {
+                                // A '{#...#}' is a template placeholder which references a named entity that is injected into the text:
+                                "from":     @"{#vw/Student#} st",
+                                "where":    @"st.ID = @StudentID",
+                                // The '__obj$' column prefix is a directive which controls the JSON response. The name following
+                                // the '$' is the key given to a new JSON sub-object. The column's value is tested for nullability and if it is null
+                                // then the key's value in the response is null, otherwise it is a valid JSON object composed of all columns
+                                // following the '__obj$' until the next '__obj$' directive is given.
+                                "select":   @"st.ID AS __obj$Student, {#cols/Student!st#}"
+                            }
+                        },
+                        // Define a Questionable method to demonstrate deprecation:
+                        "Questionable": {
+                            "params": {},
+                            "conn":  "#/svc/sis/conns/sis",
+                            "query": {
+                                "from":     @"{#vw/Student#} st",
+                                "select":   @"st.ID"
+                            }
+                        }
+                    }
+                }
+            },
+            "quad": {
+                "001": {
+                    // The "base" directive indicates which service to inherit the definition of:
+                    "base": "#../../core/001",
+                    // Methods are added to/overwritten over the base service:
+                    "methods": {
+                        // We deprecate the "Questionable" method here with a warning message; it may still be used, but the warning will be issued.
+                        "Questionable": { "deprecated": "This method does not correctly query data." }
+                    }
+                },
+                "002": {
+                    // We reference our local '001' version as our base:
+                    "base": "#../001",
+                    // Methods are added to/overwritten over the base service:
+                    "methods": {
+                        // We totally remove the "Questionable" method here; requests to use it are given a "400 Bad Request" response with
+                        // the last deprecation reason declared.
+                        "Questionable": { "removed": true }
+                    }
+                }
+            },
+            "ku": {
+                "001": {
+                    "base": "#../../core/001",
+                    "methods": {
+                        // The "Questionable" method is simply removed here without a deprecation step:
+                        "Questionable": { "removed": true }
+                    }
+                },
+                "002": {
+                    // We reference our local '001' version as our base:
+                    "base": "#../001",
+                    "methods": {
+                        "KUSpecific": {
+                            "params": "#params/StudentID"
+                        },
+                        "conn": "#/svc/sis/conns/sis",
+                        "query": {
+                            "from":     "{#vw/Student#} st",
+                            "select":   "st.FirstName"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

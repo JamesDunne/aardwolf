@@ -49,6 +49,13 @@ namespace REST0.Implementation
 
         public void Run(params string[] uriPrefixes)
         {
+            ServicePointManager.EnableDnsRoundRobin = false;
+            ServicePointManager.UseNagleAlgorithm = true;
+            ServicePointManager.SetTcpKeepAlive(true, 10000, 2500);
+            ServicePointManager.DefaultConnectionLimit = 1000;
+            ServicePointManager.Expect100Continue = false;
+            ServicePointManager.MaxServicePoints = 1000;
+
             // Establish a host-handler context:
             _hostContext = new HostContext(this, _handler);
 
@@ -76,6 +83,8 @@ namespace REST0.Implementation
                     var task = init.Initialize(_hostContext);
                     if (task != null) await task;
                 }
+
+                _listener.IgnoreWriteExceptions = true;
 
                 // Start the HTTP listener:
                 _listener.Start();
@@ -106,6 +115,11 @@ namespace REST0.Implementation
                 return;
             }
 
+            await ProcessListenerContext(listenerContext, host);
+        }
+
+        static async Task ProcessListenerContext(HttpListenerContext listenerContext, HttpAsyncHost host)
+        {
             Debug.Assert(listenerContext != null);
 
             try

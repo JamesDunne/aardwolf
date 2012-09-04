@@ -1,1 +1,1 @@
-"%ProgramFiles%\wcat\wcat.wsf" -terminate -run -t script.ubr -s localhost -v 1000
+"%ProgramFiles%\wcat\wcat.wsf" -terminate -run -t gwan.ubr -s localhost -v 1000

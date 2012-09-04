@@ -1,56 +1,88 @@
 ﻿{
-    "?help": [
-        "This is a services descriptor configuration file encoded in human-readable JSON format.",
-        "The main 'services' section describes all versions of a set of services as aliases to the current versions of those services.",
-    ],
     "services": {
-        "sis": {
-            "core":     "#sis.core!001",
-            "quad2":    "#sis.quad2!001"
-        }
+        "core": "#/svc/sis/core/001",
+        "quad": "#/svc/sis/quad/001",
+        "ku":   "#/svc/sis/ku/001"
     },
-    "#": {
+    "svc": {
         "sis": {
-            "#": {
-                "conns": {
-                    "sis": {
-                        "ds": "servername",
-                        "ic": "database"
-                    }
-                },
+            "conns": {
+                "sis": {
+                    "ds": "servername",
+                    "ic": "database"
+                }
+            },
+            "core": {
                 "params": {
                     "StudentID": {
                         "name": "@StudentID",
                         "type": "int"
                     }
                 },
-            },
-            "core!001": {
-                "#": {
+                "001": {
                     "vw": {
-                        "Student":      "ei_Student"
+                        "Student":  "ei_Student"
                     },
                     "cols": {
-                        "Student!st":   "st.StudentID, st.FirstName, st.LastName"
-                    }
-                },
-                "methods": {
-                    "GetStudent": {
-                        "params": {
-                            "id": "#params.StudentID"
+                        "Student!st":   "st.StudentID, st.FirstName, st.LastName",
+                        "Student!st2":  "st2.StudentID, st2.FirstName, st2.LastName"
+                    },
+                    "methods": {
+                        "GetStudent": {
+                            "params": {
+                                "id": "#params/StudentID"
+                            },
+                            "conn":  "#/svc/sis/conns/sis",
+                            "query": {
+                                "from":     "{#vw/Student#} st",
+                                "where":    "st.ID = @StudentID",
+                                "select":   "st.ID AS __obj$Student, {#cols/Student!st#}"
+                            }
                         },
-                        "query": {
-                            "conn":     "#conns.sis",
-                            "from":     "{%vw.Student%} st",
-                            "where":    "st.StudentID = @StudentID",
-                            "select":   "st.StudentID AS __obj$Student, {%cols.Student!st%}"
+                        "Questionable": {
+                            "params": {},
+                            "conn":  "#/svc/sis/conns/sis",
+                            "query": {
+                                "from":     "{#vw/Student#} st",
+                                "select":   "st.ID"
+                            }
                         }
                     }
                 }
             },
-            "quad2!001": {
-                "base":   "#sis.core!001",
-                "methods": {
+            "quad": {
+                "001": {
+                    "base": "#../../core/001",
+                    "methods": {
+                        "Questionable": { "deprecated": "This method does not correctly query data." }
+                    }
+                },
+                "002": {
+                    "base": "#../001",
+                    "methods": {
+                        "Questionable": { "removed": true }
+                    }
+                }
+            },
+            "ku": {
+                "001": {
+                    "base": "#../../core/001",
+                    "methods": {
+                        "Questionable": { "removed": true }
+                    }
+                },
+                "002": {
+                    "base": "#../001",
+                    "methods": {
+                        "KUSpecific": {
+                            "params": "#params/StudentID"
+                        },
+                        "conn": "#/svc/sis/conns/sis",
+                        "query": {
+                            "from":     "{#vw/Student#} st",
+                            "select":   "st.FirstName"
+                        }
+                    }
                 }
             }
         }
