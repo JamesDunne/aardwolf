@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="ConfigurationDictionary.cs" />
     <Compile Include="ContentResponse.cs" />
+    <Compile Include="SHA1TextReader.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="IConfigurationTrait.cs" />
     <Compile Include="IHttpRequestResponseContext.cs" />
@@ -57,8 +58,8 @@
     <Compile Include="JsonResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RedirectResponse.cs" />
-    <Compile Include="SHA1StreamReader.cs" />
-    <Compile Include="SHA1StreamWriter.cs" />
+    <Compile Include="SHA1InputStream.cs" />
+    <Compile Include="SHA1OutputStream.cs" />
     <Compile Include="StatusResponse.cs" />
     <Compile Include="UTF8Encoding.cs" />
   </ItemGroup>

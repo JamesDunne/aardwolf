@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Hson;
 using System.IO;
 using System.Json;
 using System.Linq;
@@ -80,7 +81,8 @@ namespace REST0.APIService
                     var req = HttpWebRequest.CreateHttp(url);
                     using (var rsp = await req.GetResponseAsync())
                     using (var rspstr = rsp.GetResponseStream())
-                    using (var sha1 = new SHA1StreamReader(rspstr))
+                    using (var hsr = new HsonReader(rspstr))
+                    using (var sha1 = new SHA1TextReader(hsr, REST0.Definition.UTF8Encoding.WithoutBOM))
                         return new SHA1Hashed<JsonValue>(JsonValue.Load(sha1), sha1.GetHash());
                 }
                 catch (Exception ex)
@@ -102,9 +104,9 @@ namespace REST0.APIService
                 try
                 {
                     using (var fs = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    using (var sha1 = new SHA1StreamReader(fs))
-                    using (var tr = new StreamReader(sha1, true))
-                        return new SHA1Hashed<JsonValue>(JsonValue.Load(tr), sha1.GetHash());
+                    using (var hsr = new HsonReader(fs, true))
+                    using (var sha1 = new SHA1TextReader(hsr, REST0.Definition.UTF8Encoding.WithoutBOM))
+                        return new SHA1Hashed<JsonValue>(JsonValue.Load(sha1), sha1.GetHash());
                 }
                 catch (Exception ex)
                 {

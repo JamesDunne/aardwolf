@@ -23,8 +23,8 @@ namespace REST0.APIService
             }
 
             // Create an HTTP host and start it:
-            //var handler = new APIHttpAsyncHandler();
-            var handler = new LoanHandler();
+            var handler = new APIHttpAsyncHandler();
+            //var handler = new LoanHandler();
 
             var host = new HttpAsyncHost(handler);
             host.SetConfiguration(configValues);

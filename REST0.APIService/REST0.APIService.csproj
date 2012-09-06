@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="APIHttpAsyncHandler.cs" />
+    <Compile Include="HsonReader.cs" />
     <Compile Include="LoanHandler.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -62,9 +63,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="config.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <None Include="app.config" />
     <Content Include="config.hson">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

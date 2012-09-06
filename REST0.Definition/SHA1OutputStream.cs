@@ -7,34 +7,34 @@ using System.Security.Cryptography;
 
 namespace REST0.Definition
 {
-    public sealed class SHA1StreamReader : Stream
+    public sealed class SHA1OutputStream : Stream
     {
         private long position;
         private SHA1 sha1;
-        private Stream input;
+        private Stream output;
 
-        public SHA1StreamReader(Stream input)
+        public SHA1OutputStream(Stream output)
         {
-            this.input = input;
+            this.output = output;
 
             this.sha1 = SHA1.Create();
-            this.position = 0L;
+            this.position = 0;
         }
 
-        public override bool CanRead { get { return true; } }
+        public override bool CanRead { get { return false; } }
 
         public override bool CanSeek { get { return false; } }
 
-        public override bool CanWrite { get { return false; } }
+        public override bool CanWrite { get { return true; } }
 
         public override void Flush()
         {
-            throw new NotImplementedException();
+            output.Flush();
         }
 
         public override long Length
         {
-            get { return input.Length; }
+            get { return output.Length; }
         }
 
         public override long Position
@@ -51,13 +51,7 @@ namespace REST0.Definition
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            int nr = input.Read(buffer, offset, count);
-            if (nr == 0) return 0;
-
-            sha1.TransformBlock(buffer, offset, nr, null, 0);
-            position += nr;
-
-            return nr;
+            throw new NotImplementedException();
         }
 
         public override long Seek(long offset, SeekOrigin origin)
@@ -67,12 +61,14 @@ namespace REST0.Definition
 
         public override void SetLength(long value)
         {
-            throw new NotImplementedException();
+            output.SetLength(value);
         }
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            throw new NotImplementedException();
+            sha1.TransformBlock(buffer, offset, count, null, 0);
+            output.Write(buffer, offset, count);
+            position += count;
         }
 
         private readonly static byte[] dum = new byte[0];
