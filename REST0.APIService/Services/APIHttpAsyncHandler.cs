@@ -729,47 +729,6 @@ namespace REST0.APIService.Services
             return new JsonResult(statusCode, message, errorData);
         }
 
-        List<Dictionary<string, object>> getJSONInflated(string[] header, IEnumerable<IEnumerable<object>> rows)
-        {
-            var list = new List<Dictionary<string, object>>();
-            foreach (IEnumerable<object> row in rows)
-            {
-                var result = new Dictionary<string, object>();
-                Dictionary<string, object> addTo = result;
-
-                using (var rowen = row.GetEnumerator())
-                    for (int i = 0; rowen.MoveNext(); ++i)
-                    {
-                        string name = header[i];
-                        object col = rowen.Current;
-
-                        if (name.StartsWith("__obj$"))
-                        {
-                            string objname = name.Substring(6);
-                            if (String.IsNullOrEmpty(objname))
-                                addTo = result;
-                            else
-                            {
-                                if (col == DBNull.Value)
-                                    addTo = null;
-                                else
-                                    addTo = new Dictionary<string, object>();
-                                if (result.ContainsKey(objname))
-                                    throw new JsonResultException(400, "{0} key specified more than once".F(name));
-                                result.Add(objname, addTo);
-                            }
-                            continue;
-                        }
-
-                        if (addTo == null) continue;
-                        addTo.Add(name, col);
-                    }
-
-                list.Add(result);
-            }
-            return list;
-        }
-
         static System.Data.SqlDbType getSqlType(string type)
         {
             switch (type)
@@ -806,6 +765,58 @@ namespace REST0.APIService.Services
                 case "money": return new System.Data.SqlTypes.SqlMoney(Decimal.Parse(value));
                 default: return new System.Data.SqlTypes.SqlString(value);
             }
+        }
+
+        async Task<List<Dictionary<string, object>>> ReadResult(SqlDataReader dr)
+        {
+            int fieldCount = dr.FieldCount;
+
+            // TODO: check if this is superfluous.
+            var header = new string[fieldCount];
+            for (int i = 0; i < fieldCount; ++i)
+            {
+                header[i] = dr.GetName(i);
+            }
+
+            var list = new List<Dictionary<string, object>>();
+
+            // Enumerate rows asynchronously:
+            while (await dr.ReadAsync())
+            {
+                var result = new Dictionary<string, object>();
+                Dictionary<string, object> addTo = result;
+
+                // Enumerate columns asynchronously:
+                for (int i = 0; i < fieldCount; ++i)
+                {
+                    object col = await dr.GetFieldValueAsync<object>(i);
+                    string name = header[i];
+
+                    if (name.StartsWith("__obj$"))
+                    {
+                        string objname = name.Substring(6);
+                        if (String.IsNullOrEmpty(objname))
+                            addTo = result;
+                        else
+                        {
+                            if (col == DBNull.Value)
+                                addTo = null;
+                            else
+                                addTo = new Dictionary<string, object>();
+                            if (result.ContainsKey(objname))
+                                throw new JsonResultException(400, "{0} key specified more than once".F(name));
+                            result.Add(objname, addTo);
+                        }
+                        continue;
+                    }
+
+                    if (addTo == null) continue;
+                    addTo.Add(name, col);
+                }
+
+                list.Add(result);
+            }
+            return list;
         }
 
         async Task<JsonResult> ExecuteQuery(HttpListenerRequest req, MethodDescriptor method)
@@ -938,20 +949,30 @@ namespace REST0.APIService.Services
                 }
                 catch (SqlException ex)
                 {
-                    cmd.Dispose();
-                    conn.Close();
-
                     return sqlError(ex);
                 }
 
                 // Execute the query:
                 SqlDataReader dr;
-                dr = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess | System.Data.CommandBehavior.CloseConnection);
+                try
+                {
+                    dr = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess | System.Data.CommandBehavior.CloseConnection);
+                }
+                catch (SqlException ex)
+                {
+                    return sqlError(ex);
+                }
 
+                try
+                {
+                    // TODO: meta
+                    return new JsonResult(ReadResult(dr), new { });
+                }
+                catch (JsonResultException jex)
+                {
+                    return new JsonResult(jex.StatusCode, jex.Message);
+                }
             }
-
-            // TODO
-            return new JsonResult();
         }
 
         #endregion
