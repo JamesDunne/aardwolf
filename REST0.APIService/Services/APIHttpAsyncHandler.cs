@@ -944,7 +944,7 @@ namespace REST0.APIService.Services
 
                 try
                 {
-                    // Open the connection:
+                    // Open the connection asynchronously:
                     await conn.OpenAsync();
                 }
                 catch (SqlException ex)
@@ -956,6 +956,7 @@ namespace REST0.APIService.Services
                 SqlDataReader dr;
                 try
                 {
+                    // Execute the query asynchronously:
                     dr = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess | System.Data.CommandBehavior.CloseConnection);
                 }
                 catch (SqlException ex)
@@ -965,8 +966,9 @@ namespace REST0.APIService.Services
 
                 try
                 {
-                    // TODO: meta
-                    return new JsonResult(ReadResult(dr), new { });
+                    var result = await ReadResult(dr);
+                    var meta = new { };
+                    return new JsonResult(result, meta);
                 }
                 catch (JsonResultException jex)
                 {
