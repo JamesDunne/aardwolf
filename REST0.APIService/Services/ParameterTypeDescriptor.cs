@@ -7,5 +7,7 @@ namespace REST0.APIService.Services
 {
     class ParameterTypeDescriptor
     {
+        public string Name { get; set; }
+        public string Type { get; set; }
     }
 }

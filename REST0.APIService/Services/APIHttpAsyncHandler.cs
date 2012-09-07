@@ -61,9 +61,99 @@ namespace REST0.APIService.Services
 
         #region Dealing with remote-fetch of configuration data
 
-        static string getJPropertyValue(JProperty prop)
+        static string getProperty(JProperty prop)
         {
+            if (prop == null) return null;
+            if (prop.Value.Type == JTokenType.Null) return null;
             return (string)((JValue)prop.Value).Value;
+        }
+
+        static string interpolate(string input, Func<string, string> lookup)
+        {
+            if (input == null) return null;
+
+            var sbMsg = new StringBuilder(input.Length);
+
+            int i = 0;
+            while (i < input.Length)
+            {
+                if (input[i] != '$')
+                {
+                    sbMsg.Append(input[i]);
+                    ++i;
+                    continue;
+                }
+
+                // We have a '$':
+                ++i;
+                if (i >= input.Length)
+                {
+                    sbMsg.Append('$');
+                    break;
+                }
+
+                if (input[i] != '{')
+                {
+                    // Just a regular old character to go straight through to the final text:
+                    sbMsg.Append('$');
+                    sbMsg.Append(input[i]);
+                    ++i;
+                    continue;
+                }
+
+                // We have a '{':
+
+                ++i;
+                int start = i;
+                while (i < input.Length)
+                {
+                    if (input[i] == '}') break;
+                    ++i;
+                }
+
+                // We hit the end?
+                if (i >= input.Length)
+                {
+                    // FAIL.
+                    i = start;
+                    sbMsg.Append('$');
+                    sbMsg.Append('{');
+                    continue;
+                }
+
+                // Did we hit a real '}' character?
+                if (input[i] != '}')
+                {
+                    // Wasn't a token like we thought, just output the '{' and keep going from there:
+                    i = start;
+                    sbMsg.Append('$');
+                    sbMsg.Append('{');
+                    continue;
+                }
+
+                // We have a token, sweet...
+                string tokenName = input.Substring(start, i - start);
+
+                ++i;
+
+                // Look up the token name:
+                string replText = lookup(tokenName);
+                if (replText != null)
+                {
+                    // Insert the token's value:
+                    sbMsg.Append(replText);
+                }
+                else
+                {
+                    // Token wasn't found, so just insert the text raw:
+                    sbMsg.Append('$');
+                    sbMsg.Append('{');
+                    sbMsg.Append(tokenName);
+                    sbMsg.Append('}');
+                }
+            }
+
+            return sbMsg.ToString();
         }
 
         async Task<bool> RefreshConfigData()
@@ -90,7 +180,7 @@ namespace REST0.APIService.Services
             {
                 // Extract the key/value pairs onto a copy of the token dictionary:
                 foreach (var prop in ((JObject)jpTokens.Value).Properties())
-                    rootTokens[prop.Name] = getJPropertyValue(prop);
+                    rootTokens[prop.Name] = getProperty(prop);
             }
 
             // Parse each service descriptor:
@@ -114,21 +204,13 @@ namespace REST0.APIService.Services
                 {
                     // NOTE(jsd): Forward references are not allowed. Base service
                     // must be defined before the current service in document order.
-                    baseService = tmpServices[getJPropertyValue(jpBase)];
+                    baseService = tmpServices[getProperty(jpBase)];
 
                     // Create copies of what's inherited from the base service to mutate:
                     tokens = new Dictionary<string, string>(baseService.Tokens);
                     conn = baseService.Connection;
                     parameterTypes = new Dictionary<string, ParameterTypeDescriptor>(baseService.ParameterTypes, StringComparer.OrdinalIgnoreCase);
-
-                    // Create clones of the base methods for mutation:
-                    methods = new Dictionary<string, MethodDescriptor>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var baseMethod in baseService.Methods)
-                    {
-                        var newMethod = baseMethod.Value;
-                        if (newMethod != null) newMethod = newMethod.Clone();
-                        methods.Add(baseMethod.Key, newMethod);
-                    }
+                    methods = new Dictionary<string, MethodDescriptor>(baseService.Methods, StringComparer.OrdinalIgnoreCase);
                 }
                 else
                 {
@@ -145,8 +227,17 @@ namespace REST0.APIService.Services
                 {
                     // Extract the key/value pairs onto our token dictionary:
                     foreach (var prop in ((JObject)jpTokens.Value).Properties())
-                        tokens[prop.Name] = getJPropertyValue(prop);
+                        tokens[prop.Name] = getProperty(prop);
                 }
+
+                // A lookup-or-null function used with `interpolate`:
+                Func<string, string> tokenLookup = (key) =>
+                {
+                    string value;
+                    if (!tokens.TryGetValue(key, out value))
+                        return null;
+                    return value;
+                };
 
                 // Parse connection:
                 var jpConnection = joService.Property("connection");
@@ -158,10 +249,10 @@ namespace REST0.APIService.Services
                     foreach (var prop in ((JObject)jpConnection.Value).Properties())
                         switch (prop.Name)
                         {
-                            case "ds": conn.DataSource = getJPropertyValue(prop); break;
-                            case "ic": conn.InitialCatalog = getJPropertyValue(prop); break;
-                            case "uid": conn.UserID = getJPropertyValue(prop); break;
-                            case "pwd": conn.Password = getJPropertyValue(prop); break;
+                            case "ds": conn.DataSource = getProperty(prop); break;
+                            case "ic": conn.InitialCatalog = getProperty(prop); break;
+                            case "uid": conn.UserID = getProperty(prop); break;
+                            case "pwd": conn.Password = getProperty(prop); break;
                             default: break;
                         }
                 }
@@ -170,9 +261,14 @@ namespace REST0.APIService.Services
                 if (jpParameterTypes != null)
                 {
                     // Define all the parameter types:
-                    foreach (var prop in ((JObject)jpParameterTypes.Value).Properties())
+                    foreach (var jpParam in ((JObject)jpParameterTypes.Value).Properties())
                     {
-                        parameterTypes[prop.Name] = null;
+                        var jpType = ((JObject)jpParam.Value).Property("type");
+                        parameterTypes[jpParam.Name] = new ParameterTypeDescriptor()
+                        {
+                            Name = jpParam.Name,
+                            Type = getProperty(jpType)
+                        };
                     }
                 }
 
@@ -180,9 +276,57 @@ namespace REST0.APIService.Services
                 if (jpMethods != null)
                 {
                     // Define all the methods:
-                    foreach (var prop in ((JObject)jpMethods.Value).Properties())
+                    foreach (var jpMethod in ((JObject)jpMethods.Value).Properties())
                     {
-                        methods[prop.Name] = null;
+                        if (jpMethod.Value.Type == JTokenType.Null)
+                        {
+                            methods[jpMethod.Name] = null;
+                            continue;
+                        }
+                        var joMethod = ((JObject)jpMethod.Value);
+
+                        // Create a clone of the inherited descriptor or a new descriptor:
+                        MethodDescriptor method;
+                        if (methods.TryGetValue(jpMethod.Name, out method))
+                            method = method.Clone();
+                        else
+                        {
+                            method = new MethodDescriptor()
+                            {
+                                Name = jpMethod.Name,
+                                Connection = conn
+                            };
+                        }
+                        methods[jpMethod.Name] = method;
+
+                        // Parse the definition:
+
+                        var jpParameters = joMethod.Property("parameters");
+                        if (jpParameters != null)
+                        {
+                            method.Parameters = new Dictionary<string, ParameterDescriptor>(StringComparer.OrdinalIgnoreCase);
+                        }
+                        else if (method.Parameters == null)
+                        {
+                            method.Parameters = new Dictionary<string, ParameterDescriptor>(StringComparer.OrdinalIgnoreCase);
+                        }
+
+                        var jpQuery = joMethod.Property("query");
+                        if (jpQuery != null)
+                        {
+                            var joQuery = (JObject)jpQuery.Value;
+                            method.Query = new QueryDescriptor();
+                            // 'from' and 'select' are required:
+                            method.Query.From = interpolate(getProperty(joQuery.Property("from")), tokenLookup);
+                            method.Query.Select = interpolate(getProperty(joQuery.Property("select")), tokenLookup);
+                            // The rest are optional:
+                            method.Query.Where = interpolate(getProperty(joQuery.Property("where")), tokenLookup);
+                            // TODO: more parts
+                        }
+                        else if (method.Query == null)
+                        {
+                            method.Query = new QueryDescriptor();
+                        }
                     }
                 }
 
@@ -201,8 +345,8 @@ namespace REST0.APIService.Services
             }
 
             // 'aliases' section is optional:
-            JToken jtAliases;
-            if (doc.TryGetValue("aliases", out jtAliases))
+            var jpAliases = doc.Property("aliases");
+            if (jpAliases != null)
             {
             }
 
