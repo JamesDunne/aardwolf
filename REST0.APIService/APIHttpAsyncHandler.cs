@@ -4,11 +4,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Hson;
 using System.IO;
-using System.Json;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+
+// TODO: Switch to Newtonsoft.Json. System.Json is crap.
+using System.Json;
 
 #pragma warning disable 1998
 
@@ -21,16 +23,18 @@ namespace REST0.APIService
 
         #region Handler configure and initialization
 
-        public async Task Configure(IHttpAsyncHostHandlerContext hostContext, ConfigurationDictionary configValues)
+        public async Task<bool> Configure(IHttpAsyncHostHandlerContext hostContext, ConfigurationDictionary configValues)
         {
             // Configure gets called first.
             localConfig = configValues;
+            return true;
         }
 
-        public async Task Initialize(IHttpAsyncHostHandlerContext context)
+        public async Task<bool> Initialize(IHttpAsyncHostHandlerContext context)
         {
             // Initialize gets called after Configure.
-            await RefreshConfigData();
+            if (!await RefreshConfigData())
+                return false;
 
             // Let a background task refresh the config data every 10 seconds:
 #pragma warning disable 4014
@@ -49,19 +53,22 @@ namespace REST0.APIService
                 }
             });
 #pragma warning restore 4014
+
+            return true;
         }
 
         #endregion
 
         #region Dealing with remote-fetch of configuration data
 
-        async Task RefreshConfigData()
+        async Task<bool> RefreshConfigData()
         {
             // Get the latest config data:
             var config = await FetchConfigData();
-            if (config == null) return;
+            if (config == null) return false;
 
             _serviceConfig = config;
+            return true;
         }
 
         async Task<SHA1Hashed<JsonValue>> FetchConfigData()

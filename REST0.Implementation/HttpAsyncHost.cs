@@ -72,7 +72,8 @@ namespace REST0.Implementation
                     if (config != null)
                     {
                         var task = config.Configure(_hostContext, _configValues);
-                        if (task != null) await task;
+                        if (task != null)
+                            if (!await task) return;
                     }
                 }
 
@@ -81,7 +82,8 @@ namespace REST0.Implementation
                 if (init != null)
                 {
                     var task = init.Initialize(_hostContext);
-                    if (task != null) await task;
+                    if (task != null)
+                        if (!await task) return;
                 }
 
                 _listener.IgnoreWriteExceptions = true;

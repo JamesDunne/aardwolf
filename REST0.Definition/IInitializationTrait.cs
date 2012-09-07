@@ -8,6 +8,6 @@ namespace REST0.Definition
 {
     public interface IInitializationTrait
     {
-        Task Initialize(IHttpAsyncHostHandlerContext context);
+        Task<bool> Initialize(IHttpAsyncHostHandlerContext context);
     }
 }
