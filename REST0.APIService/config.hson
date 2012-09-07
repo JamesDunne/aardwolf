@@ -5,30 +5,31 @@
   A multiline string literal is defined as @"..." and has the same semantics as C#'s multiline string literal.
   Comments may appear in block-format like this, or in single-line format like below.
 
-  An entity reference is an object with a single key "ref" with its value naming the entity.
+  Service names may be subdivided into multiple parts, so long as the parts are separated by ';'. Do not use
+  '/' to separate service name parts as that will conflict with URL requirements.
 */
 {
     // This is the main set of aliases for services:
     "aliases": {
-        "sis/core/latest": "sis/core/001",
-        "sis/quad/latest": "sis/quad/001"
+        "sis;core": "sis;core;v1",
+        "sis;quad": "sis;quad;v2"
     },
     // This is the main services description section:
     "services": {
         // The "$" key indicates a shared dictionary of key/value pairs. This is the global dictionary.
-        // Its values are overridden per service.
+        // Its values may be overridden per service. These values can be interpolated in string literals with
+        // the interpolation syntax `${key}`. Key names may be anything, excluding the `}` character.
         "$": {
             // Here we define the database view names for versioning purposes:
-            "Student": "ei_Student",
+            "Student":  "ei_Student",
         },
-        // This is version "001" of the "core" "sis" service offering:
-        "sis/core/001": {
+        // This is version "v1" of the "core" "sis" service offering:
+        "sis;core;v1": {
             // This is the base dictionary. Its values may be overridden in derived services.
             "$": {
-                // 'Student/st' is a list of the columns commonly selected from the 'Student' view using the 'st' alias prefix:
-                "cols/Student/st":   "st.StudentID, st.FirstName, st.LastName",
-                // 'Student/st2' is a list of the columns commonly selected from the 'Student' view using the 'st2' alias prefix:
-                "cols/Student/st2":  "st2.StudentID, st2.FirstName, st2.LastName"
+                // 'Student;st' is a list of the columns commonly selected from the 'Student' view using the 'st' alias:
+                "Student;st":   "st.StudentID, st.FirstName, st.LastName",
+                "Student;st2":  "st2.StudentID, st2.FirstName, st2.LastName"
             },
             // The shared DB connection for all methods (but may be overridden per method):
             "connection": {
@@ -56,21 +57,20 @@
                     },
                     // The individual clauses of the SELECT query, appearing in any order:
                     "query": {
-                        // NOTE: $(key) injects the key's value from the "$" dictionary.
-                        "from":     "$(Student) st",
+                        "from":     "${Student} st",
                         "where":    "st.ID = @id",
                         // NOTE: The '__obj$' column prefix is a directive which controls the JSON response. The name following
                         // the '$' is the key given to a new JSON sub-object. The column's value is tested for nullability and
                         // if it is null then the key's value in the response is null, otherwise it is a valid JSON object
                         // composed of all columns following the '__obj$' until the next '__obj$' directive is given.
-                        "select":   "st.ID AS __obj$Student, $(cols/Student/st)"
+                        "select":   "st.ID AS __obj$Student, ${Student;st}"
                     }
                 },
                 // Define a Questionable method to demonstrate deprecation:
                 "Questionable": {
                     "parameters": {},
                     "query": {
-                        "from":     "$(Student) st",
+                        "from":     "${Student} st",
                         "where":    "st.WrongID = @id",
                         "select":   "st.ID"
                     }
@@ -78,11 +78,11 @@
             }
         },
         // Here we define Quad-specific service offerings:
-        "sis/quad/001": {
+        "sis;quad;v1": {
             // The "base" directive indicates which service to inherit the definition of. Everything defined in
             // the base service is included in this definition and may be overridden or removed by assigning it
             // to a `null` value.
-            "base": "sis/core/001",
+            "base": "sis;core;v1",
             // Methods are added to/overwritten over the base service:
             "methods": {
                 // We deprecate the "Questionable" method here with a warning message; it may still be used, but
@@ -90,9 +90,9 @@
                 "Questionable": { "deprecated": "This method does not correctly query data." }
             }
         },
-        "sis/quad/002": {
-            // Based on version "001" above:
-            "base": "sis/quad/001",
+        "sis;quad;v2": {
+            // Based on version "v1" above:
+            "base": "sis;quad;v1",
             // Methods are added to/overwritten over the base service or removed by assigning `null`:
             "methods": {
                 // We remove the "Questionable" method here by setting it to `null`. Requests to use it are

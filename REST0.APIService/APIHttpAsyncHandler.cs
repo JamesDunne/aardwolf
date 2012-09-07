@@ -72,6 +72,25 @@ namespace REST0.APIService
             return true;
         }
 
+        SHA1Hashed<JObject> ReadJSONStream(Stream input)
+        {
+            using (var hsr = new HsonReader(input, UTF8.WithoutBOM, true, 8192))
+#if DEBUG
+            // Send the JSON to Console.Out while it's being read:
+            using (var tee = new TeeTextReader(hsr, Console.Out))
+#endif
+            using (var sha1 = new SHA1TextReader(tee, UTF8.WithoutBOM))
+            using (var jr = new JsonTextReader(sha1))
+            {
+                var result = new SHA1Hashed<JObject>(Json.Serializer.Deserialize<JObject>(jr), sha1.GetHash());
+#if DEBUG
+                Console.WriteLine();
+                Console.WriteLine();
+#endif
+                return result;
+            }
+        }
+
         async Task<SHA1Hashed<JObject>> FetchConfigData()
         {
             string url, path;
@@ -89,20 +108,7 @@ namespace REST0.APIService
                     var req = HttpWebRequest.CreateHttp(url);
                     using (var rsp = await req.GetResponseAsync())
                     using (var rspstr = rsp.GetResponseStream())
-                    using (var hsr = new HsonReader(rspstr, UTF8.WithoutBOM, true, 8192))
-#if DEBUG
-                    // Send the JSON to Console.Out while it's being read:
-                    using (var tee = new TeeTextReader(hsr, Console.Out))
-#endif
-                    using (var sha1 = new SHA1TextReader(tee, UTF8.WithoutBOM))
-                    using (var jr = new JsonTextReader(sha1))
-                    {
-                        var result = new SHA1Hashed<JObject>(Json.Serializer.Deserialize<JObject>(jr), sha1.GetHash());
-#if DEBUG
-                        Console.WriteLine();
-#endif
-                        return result;
-                    }
+                        return ReadJSONStream(rspstr);
                 }
                 catch (Exception ex)
                 {
@@ -123,21 +129,7 @@ namespace REST0.APIService
                 try
                 {
                     using (var fs = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    using (var hsr = new HsonReader(fs, true))
-#if DEBUG
-                    // Send the JSON to Console.Out while it's being read:
-                    using (var tee = new TeeTextReader(hsr, Console.Out))
-#endif
-                    using (var sha1 = new SHA1TextReader(tee, UTF8.WithoutBOM))
-                    using (var jr = new JsonTextReader(sha1))
-                    {
-                        var result = new SHA1Hashed<JObject>(Json.Serializer.Deserialize<JObject>(jr), sha1.GetHash());
-#if DEBUG
-                        Console.WriteLine();
-                        Console.WriteLine();
-#endif
-                        return result;
-                    }
+                        return ReadJSONStream(fs);
                 }
                 catch (Exception ex)
                 {
