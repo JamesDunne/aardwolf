@@ -5,6 +5,8 @@
   A multiline string literal is defined as @"..." and has the same semantics as C#'s multiline string literal.
   Comments may appear in block-format like this, or in single-line format like below.
 
+  In order to expedite parsing, forward-references are not allowed.
+
   Service names may be subdivided into multiple parts, so long as the parts are separated by ';'. Do not use
   '/' to separate service name parts as that will conflict with URL requirements.
 */
@@ -21,12 +23,14 @@
         // the interpolation syntax `${key}`. Key names may be anything, excluding the `}` character.
         "$": {
             // Here we define the database view names for versioning purposes:
-            "Student":  "ei_Student",
+            "Student":  "vw_Student",
         },
         // This is version "v1" of the "core" "sis" service offering:
         "sis;core;v1": {
             // This is the base dictionary. Its values may be overridden in derived services.
             "$": {
+                // Here we define the database view names for versioning purposes:
+                "Student":  "vw001_Student",
                 // 'Student;st' is a list of the columns commonly selected from the 'Student' view using the 'st' alias:
                 "Student;st":   "st.StudentID, st.FirstName, st.LastName",
                 "Student;st2":  "st2.StudentID, st2.FirstName, st2.LastName"

@@ -18,9 +18,9 @@ namespace REST0.Definition
 {
     public sealed class JsonResponse : IHttpResponseAction
     {
-        readonly JObject _value;
+        readonly object _value;
 
-        public JsonResponse(JObject value)
+        public JsonResponse(object value)
         {
             _value = value;
         }

@@ -43,13 +43,16 @@
     <Reference Include="System.Web" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="APIHttpAsyncHandler.cs" />
+    <Compile Include="Services\APIHttpAsyncHandler.cs" />
     <Compile Include="HsonReader.cs" />
-    <Compile Include="LoanHandler.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\ConnectionDescriptor.cs" />
+    <Compile Include="Services\ParameterDescriptor.cs" />
+    <Compile Include="Services\QueryDescriptor.cs" />
+    <Compile Include="Services\ServiceDescriptor.cs" />
+    <Compile Include="Services\MethodDescriptor.cs" />
+    <Compile Include="Services\ParameterTypeDescriptor.cs" />
     <Compile Include="SHA1Hashed.cs" />
   </ItemGroup>
   <ItemGroup>
