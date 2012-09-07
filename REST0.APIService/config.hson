@@ -7,7 +7,7 @@
 
   An entity reference is an object with a single key "ref" with its value naming the entity.
 */
-{"api": {
+{
     // This is the main set of aliases for services:
     "aliases": {
         "core": "sis/core/001",
@@ -101,4 +101,4 @@
             }
         }
     }
-}}
+}
