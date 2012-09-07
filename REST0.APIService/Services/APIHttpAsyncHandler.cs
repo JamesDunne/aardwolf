@@ -461,18 +461,40 @@ namespace REST0.APIService.Services
             // Capture the current service configuration values only once per connection in case they update during:
             var services = this.services;
 
-            if (context.Request.Url.AbsolutePath == "/")
-                return new RedirectResponse("/foo");
+            // Split the path into component parts:
+            string[] path = context.Request.Url.AbsolutePath.Substring(1).Split('/');
 
-            return new JsonResponse(new Dictionary<string, object> {
-                { "hash", services.HashHexString },
-                { "config", services.Value.Select(pair => new KeyValuePair<string, object>(pair.Key, new {
-                    pair.Value.Name,
-                    Base = pair.Value.BaseService != null ? pair.Value.BaseService.Name : null,
-                    pair.Value.Connection,
-                    pair.Value.Methods
-                })) }
-            });
+            if (path.Length == 0)
+                return new JsonResponse(new Dictionary<string, object> {
+                    { "hash", services.HashHexString },
+                    { "config", services.Value.Select(pair => new KeyValuePair<string, object>(pair.Key, new {
+                        pair.Value.Name,
+                        Base = pair.Value.BaseService != null ? pair.Value.BaseService.Name : null,
+                        pair.Value.Connection,
+                        pair.Value.Methods
+                    })) }
+                });
+
+            if (path.Length >= 1)
+            {
+                ServiceDescriptor desc;
+                if (!services.Value.TryGetValue(path[0], out desc))
+                    return new JsonResponse(new { fail = true });
+
+                if (path.Length == 1)
+                    return new JsonResponse(new
+                    {
+                        service = new
+                        {
+                            desc.Name,
+                            Base = desc.BaseService != null ? desc.BaseService.Name : null,
+                            desc.Connection,
+                            desc.Methods
+                        }
+                    });
+            }
+
+            return new JsonResponse(new { unknown = true });
         }
 
         #endregion
