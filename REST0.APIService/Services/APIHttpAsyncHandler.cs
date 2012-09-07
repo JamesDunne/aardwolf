@@ -462,9 +462,15 @@ namespace REST0.APIService.Services
             var services = this.services;
 
             // Split the path into component parts:
-            string[] path = context.Request.Url.AbsolutePath.Substring(1).Split('/');
+            string absPath = context.Request.Url.AbsolutePath;
+            string[] path;
+
+            if (absPath == "/") path = new string[0];
+            else path = absPath.Substring(1).Split('/');
 
             if (path.Length == 0)
+            {
+                // Report all service descriptors:
                 return new JsonResponse(new Dictionary<string, object> {
                     { "hash", services.HashHexString },
                     { "config", services.Value.Select(pair => new KeyValuePair<string, object>(pair.Key, new {
@@ -474,14 +480,17 @@ namespace REST0.APIService.Services
                         pair.Value.Methods
                     })) }
                 });
-
-            if (path.Length >= 1)
+            }
+            else
             {
+                // Look up the service name:
                 ServiceDescriptor desc;
                 if (!services.Value.TryGetValue(path[0], out desc))
                     return new JsonResponse(new { fail = true });
 
                 if (path.Length == 1)
+                {
+                    // Report this service descriptor:
                     return new JsonResponse(new
                     {
                         service = new
@@ -492,6 +501,10 @@ namespace REST0.APIService.Services
                             desc.Methods
                         }
                     });
+                }
+                else
+                {
+                }
             }
 
             return new JsonResponse(new { unknown = true });
