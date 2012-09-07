@@ -39,15 +39,13 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Json">
-      <HintPath>..\packages\System.Json.4.0.20126.16343\lib\net40\System.Json.dll</HintPath>
-    </Reference>
     <Reference Include="System.Net" />
     <Reference Include="System.Data" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConfigurationDictionary.cs" />
     <Compile Include="ContentResponse.cs" />
+    <Compile Include="Json.cs" />
     <Compile Include="SHA1TextReader.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="IConfigurationTrait.cs" />

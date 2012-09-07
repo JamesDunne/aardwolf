@@ -18,25 +18,7 @@ namespace REST0.Definition
 {
     public sealed class JsonResponse : IHttpResponseAction
     {
-#if MS
-        JsonObject _value;
-
-        public JsonResponse(JsonObject value)
-        {
-            _value = value;
-        }
-
-        public async Task Execute(IHttpRequestResponseContext context)
-        {
-            context.Response.ContentType = "application/json; charset=utf-8";
-            context.Response.ContentEncoding = UTF8Encoding.WithoutBOM;
-
-            using (context.Response.OutputStream)
-            using (var tw = new StreamWriter(context.Response.OutputStream, REST0.Definition.UTF8Encoding.WithoutBOM))
-                _value.Save(tw);
-        }
-#else
-        JObject _value;
+        readonly JObject _value;
 
         public JsonResponse(JObject value)
         {
@@ -50,8 +32,7 @@ namespace REST0.Definition
 
             using (context.Response.OutputStream)
             using (var tw = new StreamWriter(context.Response.OutputStream, REST0.Definition.UTF8Encoding.WithoutBOM))
-                new JsonSerializer().Serialize(tw, _value);
+                Json.Serializer.Serialize(tw, _value);
         }
-#endif
     }
 }
