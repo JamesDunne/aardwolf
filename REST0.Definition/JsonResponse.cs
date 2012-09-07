@@ -16,17 +16,19 @@ using Newtonsoft.Json.Linq;
 
 namespace REST0.Definition
 {
-    public sealed class JsonResponse : IHttpResponseAction
+    public sealed class JsonResponse : StatusResponse, IHttpResponseAction
     {
         readonly object _value;
 
-        public JsonResponse(object value)
+        public JsonResponse(int statusCode, string statusDescription, object value)
+            : base(statusCode, statusDescription)
         {
             _value = value;
         }
 
         public async Task Execute(IHttpRequestResponseContext context)
         {
+            SetStatus(context);
             context.Response.ContentType = "application/json; charset=utf-8";
             context.Response.ContentEncoding = UTF8.WithoutBOM;
 

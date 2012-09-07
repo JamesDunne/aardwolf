@@ -42,8 +42,10 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net" />
     <Reference Include="System.Web" />
+    <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions.cs" />
     <Compile Include="Services\APIHttpAsyncHandler.cs" />
     <Compile Include="HsonReader.cs" />
     <Compile Include="Program.cs" />

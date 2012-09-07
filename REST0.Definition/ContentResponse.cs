@@ -6,19 +6,19 @@ using System.Threading.Tasks;
 
 namespace REST0.Definition
 {
-    public sealed class ContentResponse : IHttpResponseAction
+    public sealed class ContentResponse : StatusResponse
     {
         readonly string response;
 
-        public ContentResponse(string response)
+        public ContentResponse(int statusCode, string statusDescription, string response)
+            : base(statusCode, statusDescription)
         {
             this.response = response;
         }
 
         public async Task Execute(IHttpRequestResponseContext context)
         {
-            context.Response.StatusCode = 200;
-            context.Response.StatusDescription = "OK";
+            SetStatus(context);
             context.Response.ContentLength64 = response.Length;
             context.Response.SendChunked = false;
             context.Response.ContentType = "text/html";

@@ -12,9 +12,11 @@
   '/' to separate service name parts as that will conflict with URL requirements.
 
   API request URLs are of the form:
-    `GET /api/serviceName/methodName?params`
+    `GET /meta/serviceName`
+    `GET /meta/serviceName/methodName`
+    `GET /data/serviceName/methodName?params`
   Examples:
-    `GET /api/sis;quad/GetStudent?id=10000`
+    `GET /data/sis;quad/GetStudent?id=10000`
 */
 {
     // This is the main set of aliases for services:
