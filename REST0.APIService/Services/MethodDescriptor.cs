@@ -8,6 +8,7 @@ namespace REST0.APIService.Services
     class MethodDescriptor
     {
         public string Name { get; set; }
+        public string DeprecatedMessage { get; set; }
         public IDictionary<string, ParameterDescriptor> Parameters { get; set; }
         public ConnectionDescriptor Connection { get; set; }
         public QueryDescriptor Query { get; set; }

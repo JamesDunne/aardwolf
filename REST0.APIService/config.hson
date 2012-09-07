@@ -5,10 +5,16 @@
   A multiline string literal is defined as @"..." and has the same semantics as C#'s multiline string literal.
   Comments may appear in block-format like this, or in single-line format like below.
 
-  In order to expedite parsing, forward-references are not allowed.
+  In order to expedite parsing, forward-references are not allowed. Services must be defined
+  in document order.
 
   Service names may be subdivided into multiple parts, so long as the parts are separated by ';'. Do not use
   '/' to separate service name parts as that will conflict with URL requirements.
+
+  API request URLs are of the form:
+    `GET /api/serviceName/methodName?params`
+  Examples:
+    `GET /api/sis;quad/GetStudent?id=10000`
 */
 {
     // This is the main set of aliases for services:
@@ -31,7 +37,8 @@
             "$": {
                 // Here we define the database view names for versioning purposes:
                 "Student":  "vw001_Student",
-                // 'Student;st' is a list of the columns commonly selected from the 'Student' view using the 'st' alias:
+                // 'Student;st' is a list of the columns commonly selected from the 'Student' view using the
+                // 'st' alias:
                 "Student;st":   "st.StudentID, st.FirstName, st.LastName",
                 "Student;st2":  "st2.StudentID, st2.FirstName, st2.LastName"
             },
@@ -63,16 +70,19 @@
                     "query": {
                         "from":     "${Student} st",
                         "where":    "st.ID = @id",
-                        // NOTE: The '__obj$' column prefix is a directive which controls the JSON response. The name following
-                        // the '$' is the key given to a new JSON sub-object. The column's value is tested for nullability and
-                        // if it is null then the key's value in the response is null, otherwise it is a valid JSON object
-                        // composed of all columns following the '__obj$' until the next '__obj$' directive is given.
+                        // NOTE: The '__obj$' column prefix is a directive which controls the JSON response.
+                        // The name following the '$' is the key given to a new JSON sub-object. The column's
+                        // value is tested for nullability and if it is null then the key's value in the
+                        // response is null, otherwise it is a valid JSON object composed of all columns
+                        // following the '__obj$' until the next '__obj$' directive is given.
                         "select":   "st.ID AS __obj$Student, ${Student;st}"
                     }
                 },
                 // Define a Questionable method to demonstrate deprecation:
                 "Questionable": {
-                    "parameters": {},
+                    "parameters": {
+                        // Bad method is missing the "@id" parameter.
+                    },
                     "query": {
                         "from":     "${Student} st",
                         "where":    "st.WrongID = @id",

@@ -227,6 +227,7 @@ namespace REST0.APIService.Services
                 {
                     // Extract the key/value pairs onto our token dictionary:
                     foreach (var prop in ((JObject)jpTokens.Value).Properties())
+                        // NOTE(jsd): No interpolation over tokens themselves.
                         tokens[prop.Name] = getValue(prop);
                 }
 
@@ -249,10 +250,10 @@ namespace REST0.APIService.Services
                     foreach (var prop in ((JObject)jpConnection.Value).Properties())
                         switch (prop.Name)
                         {
-                            case "ds": conn.DataSource = getValue(prop); break;
-                            case "ic": conn.InitialCatalog = getValue(prop); break;
-                            case "uid": conn.UserID = getValue(prop); break;
-                            case "pwd": conn.Password = getValue(prop); break;
+                            case "ds": conn.DataSource = interpolate(getValue(prop), tokenLookup); break;
+                            case "ic": conn.InitialCatalog = interpolate(getValue(prop), tokenLookup); break;
+                            case "uid": conn.UserID = interpolate(getValue(prop), tokenLookup); break;
+                            case "pwd": conn.Password = interpolate(getValue(prop), tokenLookup); break;
                             default: break;
                         }
                 }
@@ -267,7 +268,7 @@ namespace REST0.APIService.Services
                         parameterTypes[jpParam.Name] = new ParameterTypeDescriptor()
                         {
                             Name = jpParam.Name,
-                            Type = getValue(jpType)
+                            Type = interpolate(getValue(jpType), tokenLookup)
                         };
                     }
                 }
@@ -302,6 +303,8 @@ namespace REST0.APIService.Services
                         methods[jpMethod.Name] = method;
 
                         // Parse the definition:
+                        method.DeprecatedMessage = interpolate(getValue(joMethod.Property("deprecated")), tokenLookup);
+
                         var jpParameters = joMethod.Property("parameters");
                         if (jpParameters != null)
                         {
@@ -342,6 +345,7 @@ namespace REST0.APIService.Services
                     }
                 }
 
+                // Create the service descriptor:
                 var desc = new ServiceDescriptor()
                 {
                     Name = jpService.Name,
@@ -364,6 +368,7 @@ namespace REST0.APIService.Services
 
             // The update must boil down to an atomic reference update:
             services = new SHA1Hashed<IDictionary<string, ServiceDescriptor>>(tmpServices, config.Hash);
+
             return true;
         }
 
@@ -464,9 +469,7 @@ namespace REST0.APIService.Services
                 { "config", services.Value.Select(pair => new KeyValuePair<string, object>(pair.Key, new {
                     pair.Value.Name,
                     Base = pair.Value.BaseService != null ? pair.Value.BaseService.Name : null,
-                    pair.Value.Tokens,
                     pair.Value.Connection,
-                    pair.Value.ParameterTypes,
                     pair.Value.Methods
                 })) }
             });
