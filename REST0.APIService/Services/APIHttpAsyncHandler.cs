@@ -686,7 +686,7 @@ namespace REST0.APIService.Services
             // We must be at paren depth 0 here:
             if (pdepth > 0)
             {
-                throw new Exception(String.Format("{0} {1} left unclosed", pdepth, pdepth == 1 ? "parenthesis" : "parentheses"));
+                throw new Exception("{0} {1} left unclosed".F(pdepth, pdepth == 1 ? "parenthesis" : "parentheses"));
             }
 
             if (rec != -1)
@@ -697,7 +697,7 @@ namespace REST0.APIService.Services
             return false;
         }
 
-        static JsonResponse sqlError(System.Data.SqlClient.SqlException sqex)
+        static JsonResult sqlError(System.Data.SqlClient.SqlException sqex)
         {
             int statusCode = 500;
 
@@ -726,7 +726,7 @@ namespace REST0.APIService.Services
             }
 
             string message = msgBuilder.ToString();
-            return new JsonResponse(statusCode, message, errorData);
+            return new JsonResult(statusCode, message, errorData);
         }
 
         List<Dictionary<string, object>> getJSONInflated(string[] header, IEnumerable<IEnumerable<object>> rows)
@@ -754,8 +754,8 @@ namespace REST0.APIService.Services
                                     addTo = null;
                                 else
                                     addTo = new Dictionary<string, object>();
-                                //if (result.ContainsKey(objname))
-                                //    throw new JsonException(400, String.Format("{0} key specified more than once", name));
+                                if (result.ContainsKey(objname))
+                                    throw new JsonResultException(400, "{0} key specified more than once".F(name));
                                 result.Add(objname, addTo);
                             }
                             continue;
@@ -808,7 +808,7 @@ namespace REST0.APIService.Services
             }
         }
 
-        async Task<IHttpResponseAction> ExecuteQuery(HttpListenerRequest req, MethodDescriptor method)
+        async Task<JsonResult> ExecuteQuery(HttpListenerRequest req, MethodDescriptor method)
         {
             // Patch together a connection string:
             var csb = new System.Data.SqlClient.SqlConnectionStringBuilder();
@@ -895,13 +895,13 @@ namespace REST0.APIService.Services
             using (var conn = new System.Data.SqlClient.SqlConnection(connString))
             using (var cmd = conn.CreateCommand())
             {
+                //cmd.CommandTimeout = 360;   // seconds
+                cmd.CommandType = System.Data.CommandType.Text;
                 // Set TRANSACTION ISOLATION LEVEL and optionally ROWCOUNT before the query:
                 cmd.CommandText = @"SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;" + Environment.NewLine;
                 //if (rowLimit > 0)
-                //    cmd.CommandText += String.Format("SET ROWCOUNT {0};", rowLimit) + Environment.NewLine;
+                //    cmd.CommandText += "SET ROWCOUNT {0};".F(rowLimit) + Environment.NewLine;
                 cmd.CommandText += query;
-                cmd.CommandType = System.Data.CommandType.Text;
-                //cmd.CommandTimeout = 360;   // seconds
 
                 // Add parameters:
                 foreach (var param in method.Parameters)
@@ -921,7 +921,7 @@ namespace REST0.APIService.Services
                         message = ex.Message;
                     }
 
-                    if (!isValid) return new JsonResponse(400, "Invalid parameter value", new { success = false, message });
+                    if (!isValid) return new JsonResult(400, "Invalid parameter value");
 
                     // Get the SQL type:
                     var sqlType = getSqlType(param.Value.Type.Type);
@@ -934,7 +934,7 @@ namespace REST0.APIService.Services
                 try
                 {
                     // Open the connection:
-                    conn.Open();
+                    await conn.OpenAsync();
                 }
                 catch (SqlException ex)
                 {
@@ -944,11 +944,14 @@ namespace REST0.APIService.Services
                     return sqlError(ex);
                 }
 
-                // TODO: execute query!
+                // Execute the query:
+                SqlDataReader dr;
+                dr = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess | System.Data.CommandBehavior.CloseConnection);
+
             }
 
             // TODO
-            return new JsonResponse(200, "OK", new { });
+            return new JsonResult();
         }
 
         #endregion
@@ -1061,7 +1064,8 @@ namespace REST0.APIService.Services
                 }
 
                 var response = await ExecuteQuery(req, method);
-                return response;
+
+                return new JsonResponse(response.statusCode, "OK", response);
             }
             else
             {
