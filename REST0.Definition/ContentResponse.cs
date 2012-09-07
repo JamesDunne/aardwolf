@@ -24,7 +24,7 @@ namespace REST0.Definition
             context.Response.ContentType = "text/html";
 
             using (context.Response.OutputStream)
-            using (var tw = new System.IO.StreamWriter(context.Response.OutputStream, UTF8Encoding.WithoutBOM, 65536, true))
+            using (var tw = new System.IO.StreamWriter(context.Response.OutputStream, UTF8.WithoutBOM, 65536, true))
                 await tw.WriteAsync(response);
         }
     }

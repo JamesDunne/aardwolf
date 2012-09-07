@@ -28,10 +28,10 @@ namespace REST0.Definition
         public async Task Execute(IHttpRequestResponseContext context)
         {
             context.Response.ContentType = "application/json; charset=utf-8";
-            context.Response.ContentEncoding = UTF8Encoding.WithoutBOM;
+            context.Response.ContentEncoding = UTF8.WithoutBOM;
 
             using (context.Response.OutputStream)
-            using (var tw = new StreamWriter(context.Response.OutputStream, REST0.Definition.UTF8Encoding.WithoutBOM))
+            using (var tw = new StreamWriter(context.Response.OutputStream, REST0.Definition.UTF8.WithoutBOM))
                 Json.Serializer.Serialize(tw, _value);
         }
     }

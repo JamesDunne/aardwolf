@@ -36,17 +36,17 @@ namespace REST0.APIService
             if (!await RefreshConfigData())
                 return false;
 
-            // Let a background task refresh the config data every 10 seconds:
+            // Let a background task refresh the config data every 30 seconds:
 #pragma warning disable 4014
             Task.Run(async () =>
             {
                 while (true)
                 {
-                    // Wait until the next even 10-second mark on the clock:
-                    const long sec10 = TimeSpan.TicksPerSecond * 10;
+                    // Wait until the next even 30-second mark on the clock:
+                    const long sec30 = TimeSpan.TicksPerSecond * 30;
                     var now = DateTime.UtcNow;
-                    var next10 = new DateTime(((now.Ticks + sec10) / sec10) * sec10, DateTimeKind.Utc);
-                    await Task.Delay(next10.Subtract(now));
+                    var next30 = new DateTime(((now.Ticks + sec30) / sec30) * sec30, DateTimeKind.Utc);
+                    await Task.Delay(next30.Subtract(now));
 
                     // Refresh config data:
                     await RefreshConfigData();
@@ -67,6 +67,7 @@ namespace REST0.APIService
             var config = await FetchConfigData();
             if (config == null) return false;
 
+            // The update must boil down to an atomic reference update:
             _serviceConfig = config;
             return true;
         }
@@ -80,7 +81,7 @@ namespace REST0.APIService
             if (localConfig.TryGetSingleValue("config.Url", out url))
             {
                 noConfig = false;
-                Trace.WriteLine("Getting config data via HTTP");
+                //Trace.WriteLine("Getting config data via HTTP");
 
                 // Fire off a request now to our configuration server for our config data:
                 try
@@ -88,10 +89,20 @@ namespace REST0.APIService
                     var req = HttpWebRequest.CreateHttp(url);
                     using (var rsp = await req.GetResponseAsync())
                     using (var rspstr = rsp.GetResponseStream())
-                    using (var hsr = new HsonReader(rspstr))
-                    using (var sha1 = new SHA1TextReader(hsr, REST0.Definition.UTF8Encoding.WithoutBOM))
+                    using (var hsr = new HsonReader(rspstr, UTF8.WithoutBOM, true, 8192))
+#if DEBUG
+                    // Send the JSON to Console.Out while it's being read:
+                    using (var tee = new TeeTextReader(hsr, Console.Out))
+#endif
+                    using (var sha1 = new SHA1TextReader(tee, UTF8.WithoutBOM))
                     using (var jr = new JsonTextReader(sha1))
-                        return new SHA1Hashed<JObject>(Json.Serializer.Deserialize<JObject>(jr), sha1.GetHash());
+                    {
+                        var result = new SHA1Hashed<JObject>(Json.Serializer.Deserialize<JObject>(jr), sha1.GetHash());
+#if DEBUG
+                        Console.WriteLine();
+#endif
+                        return result;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -106,16 +117,27 @@ namespace REST0.APIService
             if (localConfig.TryGetSingleValue("config.Path", out path))
             {
                 noConfig = false;
-                Trace.WriteLine("Getting config data via file");
+                //Trace.WriteLine("Getting config data via file");
 
                 // Load the local JSON file:
                 try
                 {
                     using (var fs = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
                     using (var hsr = new HsonReader(fs, true))
-                    using (var sha1 = new SHA1TextReader(hsr, REST0.Definition.UTF8Encoding.WithoutBOM))
+#if DEBUG
+                    // Send the JSON to Console.Out while it's being read:
+                    using (var tee = new TeeTextReader(hsr, Console.Out))
+#endif
+                    using (var sha1 = new SHA1TextReader(tee, UTF8.WithoutBOM))
                     using (var jr = new JsonTextReader(sha1))
-                        return new SHA1Hashed<JObject>(Json.Serializer.Deserialize<JObject>(jr), sha1.GetHash());
+                    {
+                        var result = new SHA1Hashed<JObject>(Json.Serializer.Deserialize<JObject>(jr), sha1.GetHash());
+#if DEBUG
+                        Console.WriteLine();
+                        Console.WriteLine();
+#endif
+                        return result;
+                    }
                 }
                 catch (Exception ex)
                 {

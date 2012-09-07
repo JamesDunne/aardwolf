@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="ConfigurationDictionary.cs" />
     <Compile Include="ContentResponse.cs" />
+    <Compile Include="TeeTextReader.cs" />
     <Compile Include="Json.cs" />
     <Compile Include="SHA1TextReader.cs" />
     <Compile Include="Extensions.cs" />

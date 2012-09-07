@@ -10,7 +10,7 @@ namespace REST0.Definition
     public sealed class SHA1TextReader : TextReader
     {
         readonly SHA1 sha1;
-        readonly StreamReader input;
+        readonly TextReader input;
         readonly Encoder encoder;
 
         readonly static byte[] dum = new byte[0];
@@ -21,7 +21,7 @@ namespace REST0.Definition
         int ibufIndex;
         const int bufferSize = 8192;
 
-        public SHA1TextReader(StreamReader input, Encoding encoding)
+        public SHA1TextReader(TextReader input, Encoding encoding)
             : base()
         {
             this.input = input;
