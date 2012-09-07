@@ -10,8 +10,8 @@
 {
     // This is the main set of aliases for services:
     "aliases": {
-        "core": "sis/core/001",
-        "quad": "sis/quad/001"
+        "sis/core/latest": "sis/core/001",
+        "sis/quad/latest": "sis/quad/001"
     },
     // This is the main services description section:
     "services": {
@@ -95,8 +95,8 @@
             "base": "sis/quad/001",
             // Methods are added to/overwritten over the base service or removed by assigning `null`:
             "methods": {
-                // We totally remove the "Questionable" method here by setting it to `null`. Requests to use it are
-                // given a "400 Bad Request" response with the last deprecation message.
+                // We remove the "Questionable" method here by setting it to `null`. Requests to use it are
+                // given a "400 Bad Request" response.
                 "Questionable": null
             }
         }

@@ -9,8 +9,12 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
-// TODO: Switch to Newtonsoft.Json. System.Json is crap.
+#if MS
 using System.Json;
+#else
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+#endif
 
 #pragma warning disable 1998
 
@@ -19,7 +23,11 @@ namespace REST0.APIService
     public sealed class APIHttpAsyncHandler : IHttpAsyncHandler, IInitializationTrait, IConfigurationTrait
     {
         ConfigurationDictionary localConfig;
+#if MS
         SHA1Hashed<JsonValue> _serviceConfig;
+#else
+        SHA1Hashed<JObject> _serviceConfig;
+#endif
 
         #region Handler configure and initialization
 
@@ -71,7 +79,11 @@ namespace REST0.APIService
             return true;
         }
 
+#if MS
         async Task<SHA1Hashed<JsonValue>> FetchConfigData()
+#else
+        async Task<SHA1Hashed<JObject>> FetchConfigData()
+#endif
         {
             string url, path;
             bool noConfig = true;
@@ -90,7 +102,12 @@ namespace REST0.APIService
                     using (var rspstr = rsp.GetResponseStream())
                     using (var hsr = new HsonReader(rspstr))
                     using (var sha1 = new SHA1TextReader(hsr, REST0.Definition.UTF8Encoding.WithoutBOM))
+#if MS
                         return new SHA1Hashed<JsonValue>(JsonValue.Load(sha1), sha1.GetHash());
+#else
+                    using (var jr = new JsonTextReader(sha1))
+                        return new SHA1Hashed<JObject>(new JsonSerializer().Deserialize<JObject>(jr), sha1.GetHash());
+#endif
                 }
                 catch (Exception ex)
                 {
@@ -113,7 +130,12 @@ namespace REST0.APIService
                     using (var fs = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
                     using (var hsr = new HsonReader(fs, true))
                     using (var sha1 = new SHA1TextReader(hsr, REST0.Definition.UTF8Encoding.WithoutBOM))
+#if MS
                         return new SHA1Hashed<JsonValue>(JsonValue.Load(sha1), sha1.GetHash());
+#else
+                    using (var jr = new JsonTextReader(sha1))
+                        return new SHA1Hashed<JObject>(new JsonSerializer().Deserialize<JObject>(jr), sha1.GetHash());
+#endif
                 }
                 catch (Exception ex)
                 {
@@ -146,10 +168,17 @@ namespace REST0.APIService
             if (context.Request.Url.AbsolutePath == "/")
                 return new RedirectResponse("/foo");
 
+#if MS
             return new JsonResponse(new JsonObject() {
                 { "hash", config.HashHexString },
                 { "config", config.Value }
             });
+#else
+            return new JsonResponse(new JObject() {
+                { "hash", config.HashHexString },
+                { "config", config.Value }
+            });
+#endif
         }
 
         #endregion
