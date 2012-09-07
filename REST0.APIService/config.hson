@@ -49,7 +49,7 @@
             },
             // This is where we define common parameter types:
             "parameterTypes": {
-                "StudentID": { "type": "int" },
+                "StudentID": { "type": "int" }
             },
             // This is the main method definition section:
             "methods": {
@@ -57,7 +57,7 @@
                 "GetStudent": {
                     // This is the mapping of which query-string parameter names map to which SQL parameters:
                     "parameters": {
-                        "id": { "name": "@id", "type": "StudentID" }
+                        "id": { "sqlName": "@id", "type": "StudentID" }
                     },
                     // The individual clauses of the SELECT query, appearing in any order:
                     "query": {

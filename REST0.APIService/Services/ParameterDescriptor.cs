@@ -8,6 +8,7 @@ namespace REST0.APIService.Services
     class ParameterDescriptor
     {
         public string Name { get; set; }
+        public string SqlName { get; set; }
         public ParameterTypeDescriptor Type { get; set; }
     }
 }

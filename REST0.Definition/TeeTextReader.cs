@@ -10,25 +10,22 @@ namespace REST0.Definition
     public sealed class TeeTextReader : TextReader
     {
         readonly TextReader input;
-        readonly TextWriter[] outputs;
-        readonly bool bufferToNewline;
+        readonly Action<string>[] outputs;
         readonly StringBuilder buffer;
         readonly int bufferSize;
 
-        public TeeTextReader(TextReader input, TextWriter[] outputs, bool bufferToNewline = true, int bufferSize = 8192)
+        public TeeTextReader(TextReader input, Action<string>[] outputs, int bufferSize = 8192)
             : base()
         {
             this.input = input;
             this.outputs = outputs;
 
-            this.bufferToNewline = bufferToNewline;
             this.bufferSize = bufferSize;
-            if (bufferToNewline)
-                this.buffer = new StringBuilder(bufferSize);
+            this.buffer = new StringBuilder(bufferSize);
         }
 
-        public TeeTextReader(TextReader input, TextWriter output, bool bufferToNewline = true, int bufferSize = 8192)
-            : this(input, new TextWriter[1] { output }, bufferToNewline, bufferSize)
+        public TeeTextReader(TextReader input, Action<string> output, int bufferSize = 8192)
+            : this(input, new Action<string>[1] { output }, bufferSize)
         {
         }
 
@@ -40,36 +37,25 @@ namespace REST0.Definition
         void writeBuffer()
         {
             foreach (var output in outputs)
-                output.Write(buffer.ToString());
+                output(buffer.ToString());
             buffer.Clear();
         }
 
         public override int Read()
         {
             int c = input.Read();
-            if (bufferToNewline)
+            if (c == -1 || c == '\n')
             {
-                if (c == -1 || c == '\n')
-                {
-                    // Both EOF and '\n' cause a newline append:
-                    if (c == '\n') buffer.Append('\n');
-                    writeBuffer();
-                }
-                else
-                {
-                    buffer.Append((char)c);
-                    if (buffer.Length >= bufferSize)
-                    {
-                        writeBuffer();
-                    }
-                }
+                // Both EOF and '\n' cause a newline append:
+                if (c == '\n') buffer.Append('\n');
+                writeBuffer();
             }
             else
             {
-                if (c != -1)
+                buffer.Append((char)c);
+                if (buffer.Length >= bufferSize)
                 {
-                    foreach (var output in outputs)
-                        output.Write((char)c);
+                    writeBuffer();
                 }
             }
             return c;
@@ -78,15 +64,16 @@ namespace REST0.Definition
         public override int Read(char[] buffer, int index, int count)
         {
             int nr = base.Read(buffer, index, count);
-            if (bufferToNewline)
-            {
-                writeBuffer();
-            }
             if (nr > 0)
             {
-                foreach (var output in outputs)
-                    output.Write(buffer, index, nr);
+                for (int i = index; i < index + nr; ++i)
+                {
+                    this.buffer.Append(buffer[i]);
+                    if ((buffer.Length >= bufferSize) || (buffer[i] == '\n'))
+                        writeBuffer();
+                }
             }
+            else writeBuffer();
             return nr;
         }
     }
