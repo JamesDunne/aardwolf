@@ -11,5 +11,7 @@ namespace REST0.APIService.Services
         public string InitialCatalog { get; set; }
         public string UserID { get; set; }
         public string Password { get; set; }
+
+        public string ConnectionString { get; internal set; }
     }
 }

@@ -33,7 +33,7 @@ namespace REST0.Definition
             context.Response.ContentEncoding = UTF8.WithoutBOM;
 
             using (context.Response.OutputStream)
-            using (var tw = new StreamWriter(context.Response.OutputStream, REST0.Definition.UTF8.WithoutBOM))
+            using (var tw = new StreamWriter(context.Response.OutputStream, UTF8.WithoutBOM))
                 Json.Serializer.Serialize(tw, _value);
         }
     }

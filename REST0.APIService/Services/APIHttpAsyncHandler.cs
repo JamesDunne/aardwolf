@@ -247,6 +247,7 @@ namespace REST0.APIService.Services
                 {
                     // Completely override what has been inherited, if anything:
                     conn = new ConnectionDescriptor();
+
                     // Set the connection properties:
                     foreach (var prop in ((JObject)jpConnection.Value).Properties())
                         switch (prop.Name)
@@ -257,6 +258,40 @@ namespace REST0.APIService.Services
                             case "pwd": conn.Password = interpolate(getValue(prop), tokenLookup); break;
                             default: break;
                         }
+
+                    // Build the final connection string:
+                    {
+                        var csb = new System.Data.SqlClient.SqlConnectionStringBuilder();
+
+                        csb.DataSource = conn.DataSource ?? String.Empty;
+                        csb.InitialCatalog = conn.InitialCatalog ?? String.Empty;
+
+                        string uid = conn.UserID;
+                        string pwd = conn.Password;
+                        if (uid != null && pwd != null)
+                        {
+                            csb.IntegratedSecurity = false;
+                            csb.UserID = uid;
+                            csb.Password = pwd;
+                        }
+                        else
+                        {
+                            csb.IntegratedSecurity = true;
+                        }
+
+                        // Enable async processing:
+                        csb.AsynchronousProcessing = true;
+                        // Max 5-second connection timeout:
+                        csb.ConnectTimeout = 5;
+                        // Some defaults:
+                        csb.ApplicationName = "api";
+                        // TODO(jsd): Tune this parameter
+                        csb.PacketSize = 32768;
+                        //csb.WorkstationID = req.UserHostName;
+
+                        // Finalize the connection string:
+                        conn.ConnectionString = csb.ToString();
+                    }
                 }
 
                 var jpParameterTypes = joService.Property("parameterTypes");
@@ -338,6 +373,63 @@ namespace REST0.APIService.Services
                             // The rest are optional:
                             method.Query.Where = interpolate(getValue(joQuery.Property("where")), tokenLookup);
                             // TODO: more parts
+
+                            // TODO: build final SQL.
+                            {
+                                // Strip out all SQL comments:
+                                // TODO: XMLNamespaces!!
+                                string withCTEidentifier = stripSQLComments(method.Query.CTEidentifier);
+                                string withCTEexpression = stripSQLComments(method.Query.CTEexpression);
+                                string select = stripSQLComments(method.Query.Select);
+                                string from = stripSQLComments(method.Query.From);
+                                string where = stripSQLComments(method.Query.Where);
+                                string groupBy = stripSQLComments(method.Query.GroupBy);
+                                string having = stripSQLComments(method.Query.Having);
+                                string orderBy = stripSQLComments(method.Query.OrderBy);
+
+                                // Allocate a StringBuilder with enough space to construct the query:
+                                StringBuilder qb = new StringBuilder(
+                                    (withCTEidentifier ?? "").Length + (withCTEexpression ?? "").Length + ";WITH  AS ()\r\n".Length
+                                  + (select ?? "").Length + "SELECT ".Length
+                                  + (from ?? "").Length + "\r\nFROM ".Length
+                                  + (where ?? "").Length + "\r\nWHERE ".Length
+                                  + (groupBy ?? "").Length + "\r\nGROUP BY ".Length
+                                  + (having ?? "").Length + "\r\nHAVING ".Length
+                                  + (orderBy ?? "").Length + "\r\nORDER BY ".Length
+                                );
+
+                                // Construct the query:
+                                if (!String.IsNullOrEmpty(withCTEidentifier) && !String.IsNullOrEmpty(withCTEexpression))
+                                    qb.AppendFormat(";WITH {0} AS ({1})\r\n", withCTEidentifier, withCTEexpression);
+                                qb.AppendFormat("SELECT {0}", select);
+                                if (!String.IsNullOrEmpty(from)) qb.AppendFormat("\r\nFROM {0}", from);
+                                if (!String.IsNullOrEmpty(where)) qb.AppendFormat("\r\nWHERE {0}", where);
+                                if (!String.IsNullOrEmpty(groupBy)) qb.AppendFormat("\r\nGROUP BY {0}", groupBy);
+                                if (!String.IsNullOrEmpty(having)) qb.AppendFormat("\r\nHAVING {0}", having);
+                                if (!String.IsNullOrEmpty(orderBy)) qb.AppendFormat("\r\nORDER BY {0}", orderBy);
+
+                                var errors = method.Query.Errors = new List<string>(6);
+
+                                // This is a very conservative approach and will lead to false-positives for things like EXISTS() and sub-queries:
+                                if (containsSQLkeywords(select, "from", "into", "where", "group", "having", "order", "for"))
+                                    errors.Add("SELECT clause cannot contain FROM, INTO, WHERE, GROUP BY, HAVING, ORDER BY, or FOR");
+                                if (containsSQLkeywords(from, "where", "group", "having", "order", "for"))
+                                    errors.Add("FROM clause cannot contain WHERE, GROUP BY, HAVING, ORDER BY, or FOR");
+                                if (containsSQLkeywords(where, "group", "having", "order", "for"))
+                                    errors.Add("WHERE clause cannot contain GROUP BY, HAVING, ORDER BY, or FOR");
+                                if (containsSQLkeywords(groupBy, "having", "order", "for"))
+                                    errors.Add("GROUP BY clause cannot contain HAVING, ORDER BY, or FOR");
+                                if (containsSQLkeywords(having, "order", "for"))
+                                    errors.Add("HAVING clause cannot contain ORDER BY or FOR");
+                                if (containsSQLkeywords(orderBy, "for"))
+                                    errors.Add("ORDER BY clause cannot contain FOR");
+
+                                // Finalize the query:
+                                if (errors.Count == 0)
+                                    method.Query.SQL = qb.ToString();
+                                else
+                                    method.Query.SQL = null;
+                            }
                         }
                         else if (method.Query == null)
                         {
@@ -821,99 +913,15 @@ namespace REST0.APIService.Services
 
         async Task<JsonResult> ExecuteQuery(HttpListenerRequest req, MethodDescriptor method)
         {
-            // Patch together a connection string:
-            var csb = new System.Data.SqlClient.SqlConnectionStringBuilder();
-
-            csb.DataSource = method.Connection.DataSource ?? String.Empty;
-            csb.InitialCatalog = method.Connection.InitialCatalog ?? String.Empty;
-
-            string uid = method.Connection.UserID;
-            string pwd = method.Connection.Password;
-            if (uid != null && pwd != null)
+            if (method.Query.SQL == null)
             {
-                csb.IntegratedSecurity = false;
-                csb.UserID = uid;
-                csb.Password = pwd;
+                return new JsonResult(500, "Malformed query descriptor", method.Query.Errors);
             }
-            else
-            {
-                csb.IntegratedSecurity = true;
-            }
-
-            // Enable async processing:
-            csb.AsynchronousProcessing = true;
-            // Max 5-second connection timeout:
-            csb.ConnectTimeout = 5;
-            // Some defaults:
-            csb.ApplicationName = "api";
-            // TODO(jsd): Tune this parameter
-            csb.PacketSize = 32768;
-            csb.WorkstationID = req.UserHostName;
-
-            // Finalize the connection string:
-            var connString = csb.ToString();
-
-            // Strip out all SQL comments:
-            // TODO: XMLNamespaces!!
-            string withCTEidentifier = stripSQLComments(method.Query.CTEidentifier);
-            string withCTEexpression = stripSQLComments(method.Query.CTEexpression);
-            string select = stripSQLComments(method.Query.Select);
-            string from = stripSQLComments(method.Query.From);
-            string where = stripSQLComments(method.Query.Where);
-            string groupBy = stripSQLComments(method.Query.GroupBy);
-            string having = stripSQLComments(method.Query.Having);
-            string orderBy = stripSQLComments(method.Query.OrderBy);
-
-            // Allocate a StringBuilder with enough space to construct the query:
-            StringBuilder qb = new StringBuilder(
-                (withCTEidentifier ?? "").Length + (withCTEexpression ?? "").Length + ";WITH  AS ()\r\n".Length
-              + (select ?? "").Length + "SELECT ".Length
-              + (from ?? "").Length + "\r\nFROM ".Length
-              + (where ?? "").Length + "\r\nWHERE ".Length
-              + (groupBy ?? "").Length + "\r\nGROUP BY ".Length
-              + (having ?? "").Length + "\r\nHAVING ".Length
-              + (orderBy ?? "").Length + "\r\nORDER BY ".Length
-            );
-
-            // Construct the query:
-            if (!String.IsNullOrEmpty(withCTEidentifier) && !String.IsNullOrEmpty(withCTEexpression))
-                qb.AppendFormat(";WITH {0} AS ({1})\r\n", withCTEidentifier, withCTEexpression);
-            qb.AppendFormat("SELECT {0}", select);
-            if (!String.IsNullOrEmpty(from)) qb.AppendFormat("\r\nFROM {0}", from);
-            if (!String.IsNullOrEmpty(where)) qb.AppendFormat("\r\nWHERE {0}", where);
-            if (!String.IsNullOrEmpty(groupBy)) qb.AppendFormat("\r\nGROUP BY {0}", groupBy);
-            if (!String.IsNullOrEmpty(having)) qb.AppendFormat("\r\nHAVING {0}", having);
-            if (!String.IsNullOrEmpty(orderBy)) qb.AppendFormat("\r\nORDER BY {0}", orderBy);
-
-            // Finalize the query:
-            string query = qb.ToString();
-
-            // This is a very conservative approach and will lead to false-positives for things like EXISTS() and sub-queries:
-            if (containsSQLkeywords(select, "from", "into", "where", "group", "having", "order", "for"))
-                throw new ArgumentException("SELECT clause cannot contain FROM, INTO, WHERE, GROUP BY, HAVING, ORDER BY, or FOR");
-            if (containsSQLkeywords(from, "where", "group", "having", "order", "for"))
-                throw new ArgumentException("FROM clause cannot contain WHERE, GROUP BY, HAVING, ORDER BY, or FOR");
-            if (containsSQLkeywords(where, "group", "having", "order", "for"))
-                throw new ArgumentException("WHERE clause cannot contain GROUP BY, HAVING, ORDER BY, or FOR");
-            if (containsSQLkeywords(groupBy, "having", "order", "for"))
-                throw new ArgumentException("GROUP BY clause cannot contain HAVING, ORDER BY, or FOR");
-            if (containsSQLkeywords(having, "order", "for"))
-                throw new ArgumentException("HAVING clause cannot contain ORDER BY or FOR");
-            if (containsSQLkeywords(orderBy, "for"))
-                throw new ArgumentException("ORDER BY clause cannot contain FOR");
 
             // Open a connection and execute the command:
-            using (var conn = new System.Data.SqlClient.SqlConnection(connString))
+            using (var conn = new System.Data.SqlClient.SqlConnection(method.Connection.ConnectionString))
             using (var cmd = conn.CreateCommand())
             {
-                //cmd.CommandTimeout = 360;   // seconds
-                cmd.CommandType = System.Data.CommandType.Text;
-                // Set TRANSACTION ISOLATION LEVEL and optionally ROWCOUNT before the query:
-                cmd.CommandText = @"SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;" + Environment.NewLine;
-                //if (rowLimit > 0)
-                //    cmd.CommandText += "SET ROWCOUNT {0};".F(rowLimit) + Environment.NewLine;
-                cmd.CommandText += query;
-
                 // Add parameters:
                 foreach (var param in method.Parameters)
                 {
@@ -941,6 +949,14 @@ namespace REST0.APIService.Services
                     // Add the SQL parameter:
                     cmd.Parameters.Add(param.Value.Name, sqlType).SqlValue = sqlValue;
                 }
+
+                //cmd.CommandTimeout = 360;   // seconds
+                cmd.CommandType = System.Data.CommandType.Text;
+                // Set TRANSACTION ISOLATION LEVEL and optionally ROWCOUNT before the query:
+                cmd.CommandText = @"SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;" + Environment.NewLine;
+                //if (rowLimit > 0)
+                //    cmd.CommandText += "SET ROWCOUNT {0};".F(rowLimit) + Environment.NewLine;
+                cmd.CommandText += method.Query.SQL;
 
                 try
                 {

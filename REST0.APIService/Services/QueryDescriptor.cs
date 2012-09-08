@@ -16,5 +16,14 @@ namespace REST0.APIService.Services
         public string GroupBy { get; set; }
         public string Having { get; set; }
         public string OrderBy { get; set; }
+
+        /// <summary>
+        /// The final composed SQL query.
+        /// </summary>
+        public string SQL { get; internal set; }
+        /// <summary>
+        /// Any errors encountered while parsing the query.
+        /// </summary>
+        public List<string> Errors { get; internal set; }
     }
 }
