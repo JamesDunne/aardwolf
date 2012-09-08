@@ -209,9 +209,23 @@ namespace REST0.APIService.Services
 
                     // Create copies of what's inherited from the base service to mutate:
                     tokens = new Dictionary<string, string>(baseService.Tokens);
-                    conn = baseService.Connection;
                     parameterTypes = new Dictionary<string, ParameterTypeDescriptor>(baseService.ParameterTypes, StringComparer.OrdinalIgnoreCase);
                     methods = new Dictionary<string, MethodDescriptor>(baseService.Methods, StringComparer.OrdinalIgnoreCase);
+
+                    // Copy the connection descriptor:
+                    conn = new ConnectionDescriptor()
+                    {
+                        DataSource = baseService.Connection.DataSource,
+                        InitialCatalog = baseService.Connection.InitialCatalog,
+                        UserID = baseService.Connection.UserID,
+                        Password = baseService.Connection.Password,
+                    };
+
+                    // Recalculate the connection string:
+                    var csb = new SqlConnectionStringBuilder(baseService.Connection.ConnectionString);
+                    // TODO: Sanitize the application name
+                    csb.ApplicationName = jpService.Name.Replace(';', '/');
+                    conn.ConnectionString = csb.ToString();
                 }
                 else
                 {
@@ -284,7 +298,8 @@ namespace REST0.APIService.Services
                         // Max 5-second connection timeout:
                         csb.ConnectTimeout = 5;
                         // Some defaults:
-                        csb.ApplicationName = "api";
+                        // TODO: Sanitize the application name
+                        csb.ApplicationName = jpService.Name.Replace(';', '/');
                         // TODO(jsd): Tune this parameter
                         csb.PacketSize = 32768;
                         //csb.WorkstationID = req.UserHostName;
@@ -341,6 +356,8 @@ namespace REST0.APIService.Services
                         // Parse the definition:
                         method.DeprecatedMessage = interpolate(getValue(joMethod.Property("deprecated")), tokenLookup);
 
+                        // TODO: parse "connection"
+
                         var jpParameters = joMethod.Property("parameters");
                         if (jpParameters != null)
                         {
@@ -372,12 +389,23 @@ namespace REST0.APIService.Services
                             method.Query.Select = interpolate(getValue(joQuery.Property("select")), tokenLookup);
                             // The rest are optional:
                             method.Query.Where = interpolate(getValue(joQuery.Property("where")), tokenLookup);
-                            // TODO: more parts
+                            method.Query.GroupBy = interpolate(getValue(joQuery.Property("groupBy")), tokenLookup);
+                            method.Query.Having = interpolate(getValue(joQuery.Property("having")), tokenLookup);
+                            method.Query.OrderBy = interpolate(getValue(joQuery.Property("orderBy")), tokenLookup);
+                            method.Query.CTEidentifier = interpolate(getValue(joQuery.Property("withCTEidentifier")), tokenLookup);
+                            method.Query.CTEexpression = interpolate(getValue(joQuery.Property("withCTEexpression")), tokenLookup);
 
-                            // TODO: build final SQL.
+                            // Parse "xmlns:prefix": "http://uri.example.org/namespace" properties for WITH XMLNAMESPACES:
+                            // TODO: Are xmlns namespace prefixes case-insensitive?
+                            method.Query.XMLNamespaces = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            foreach (var jpXmlns in joQuery.Properties())
+                            {
+                                if (!jpXmlns.Name.StartsWith("xmlns:")) continue;
+                                method.Query.XMLNamespaces.Add(jpXmlns.Name.Substring(6), interpolate(getValue(jpXmlns), tokenLookup));
+                            }
+
                             {
                                 // Strip out all SQL comments:
-                                // TODO: XMLNamespaces!!
                                 string withCTEidentifier = stripSQLComments(method.Query.CTEidentifier);
                                 string withCTEexpression = stripSQLComments(method.Query.CTEexpression);
                                 string select = stripSQLComments(method.Query.Select);
@@ -389,28 +417,17 @@ namespace REST0.APIService.Services
 
                                 // Allocate a StringBuilder with enough space to construct the query:
                                 StringBuilder qb = new StringBuilder(
-                                    (withCTEidentifier ?? "").Length + (withCTEexpression ?? "").Length + ";WITH  AS ()\r\n".Length
-                                  + (select ?? "").Length + "SELECT ".Length
-                                  + (from ?? "").Length + "\r\nFROM ".Length
-                                  + (where ?? "").Length + "\r\nWHERE ".Length
-                                  + (groupBy ?? "").Length + "\r\nGROUP BY ".Length
-                                  + (having ?? "").Length + "\r\nHAVING ".Length
-                                  + (orderBy ?? "").Length + "\r\nORDER BY ".Length
+                                    (withCTEidentifier ?? String.Empty).Length + (withCTEexpression ?? String.Empty).Length + ";WITH  AS ()\r\n".Length
+                                  + (select ?? String.Empty).Length + "SELECT ".Length
+                                  + (from ?? String.Empty).Length + "\r\nFROM ".Length
+                                  + (where ?? String.Empty).Length + "\r\nWHERE ".Length
+                                  + (groupBy ?? String.Empty).Length + "\r\nGROUP BY ".Length
+                                  + (having ?? String.Empty).Length + "\r\nHAVING ".Length
+                                  + (orderBy ?? String.Empty).Length + "\r\nORDER BY ".Length
                                 );
 
-                                // Construct the query:
-                                if (!String.IsNullOrEmpty(withCTEidentifier) && !String.IsNullOrEmpty(withCTEexpression))
-                                    qb.AppendFormat(";WITH {0} AS ({1})\r\n", withCTEidentifier, withCTEexpression);
-                                qb.AppendFormat("SELECT {0}", select);
-                                if (!String.IsNullOrEmpty(from)) qb.AppendFormat("\r\nFROM {0}", from);
-                                if (!String.IsNullOrEmpty(where)) qb.AppendFormat("\r\nWHERE {0}", where);
-                                if (!String.IsNullOrEmpty(groupBy)) qb.AppendFormat("\r\nGROUP BY {0}", groupBy);
-                                if (!String.IsNullOrEmpty(having)) qb.AppendFormat("\r\nHAVING {0}", having);
-                                if (!String.IsNullOrEmpty(orderBy)) qb.AppendFormat("\r\nORDER BY {0}", orderBy);
-
-                                var errors = method.Query.Errors = new List<string>(6);
-
                                 // This is a very conservative approach and will lead to false-positives for things like EXISTS() and sub-queries:
+                                var errors = method.Query.Errors = new List<string>(6);
                                 if (containsSQLkeywords(select, "from", "into", "where", "group", "having", "order", "for"))
                                     errors.Add("SELECT clause cannot contain FROM, INTO, WHERE, GROUP BY, HAVING, ORDER BY, or FOR");
                                 if (containsSQLkeywords(from, "where", "group", "having", "order", "for"))
@@ -424,11 +441,44 @@ namespace REST0.APIService.Services
                                 if (containsSQLkeywords(orderBy, "for"))
                                     errors.Add("ORDER BY clause cannot contain FOR");
 
-                                // Finalize the query:
-                                if (errors.Count == 0)
-                                    method.Query.SQL = qb.ToString();
-                                else
+                                if (errors.Count > 0)
+                                {
+                                    // No query for you.
                                     method.Query.SQL = null;
+                                }
+                                else
+                                {
+                                    // Construct the query:
+                                    bool didSemi = false;
+                                    if (method.Query.XMLNamespaces.Count > 0)
+                                    {
+                                        didSemi = true;
+                                        qb.AppendLine(";WITH XMLNAMESPACES (");
+                                        using (var en = method.Query.XMLNamespaces.GetEnumerator())
+                                            for (int i = 0; en.MoveNext(); ++i)
+                                            {
+                                                var xmlns = en.Current;
+                                                // TODO: properly escape!
+                                                qb.AppendFormat("  '{0}' AS {1}", xmlns.Value, xmlns.Key);
+                                                if (i < method.Query.XMLNamespaces.Count - 1) qb.AppendLine(",");
+                                                else qb.AppendLine();
+                                            }
+                                        qb.AppendLine(")");
+                                    }
+                                    if (!String.IsNullOrEmpty(withCTEidentifier) && !String.IsNullOrEmpty(withCTEexpression))
+                                    {
+                                        if (!didSemi) qb.Append(';');
+                                        qb.AppendFormat("WITH {0} AS ({1})\r\n", withCTEidentifier, withCTEexpression);
+                                    }
+                                    qb.AppendFormat("SELECT {0}", select);
+                                    if (!String.IsNullOrEmpty(from)) qb.AppendFormat("\r\nFROM {0}", from);
+                                    if (!String.IsNullOrEmpty(where)) qb.AppendFormat("\r\nWHERE {0}", where);
+                                    if (!String.IsNullOrEmpty(groupBy)) qb.AppendFormat("\r\nGROUP BY {0}", groupBy);
+                                    if (!String.IsNullOrEmpty(having)) qb.AppendFormat("\r\nHAVING {0}", having);
+                                    if (!String.IsNullOrEmpty(orderBy)) qb.AppendFormat("\r\nORDER BY {0}", orderBy);
+
+                                    method.Query.SQL = qb.ToString();
+                                }
                             }
                         }
                         else if (method.Query == null)
@@ -457,6 +507,13 @@ namespace REST0.APIService.Services
             var jpAliases = doc.Property("aliases");
             if (jpAliases != null)
             {
+                // Parse the named aliases:
+                var joAliases = (JObject)jpAliases.Value;
+                foreach (var alias in joAliases.Properties())
+                {
+                    // Add the existing ServiceDescriptor reference to the new name:
+                    tmpServices.Add(alias.Name, tmpServices[getValue(alias)]);
+                }
             }
 
             // The update must boil down to an atomic reference update:
@@ -1023,7 +1080,7 @@ namespace REST0.APIService.Services
             if (path.Length == 0)
             {
                 // TODO: some descriptive information here.
-                return new JsonResponse(200, "OK", new { success = true, message = "" });
+                return new JsonResponse(200, "OK", new { success = true, message = String.Empty });
             }
 
             if (path[0] == "meta")
@@ -1051,17 +1108,37 @@ namespace REST0.APIService.Services
                 if (!services.Value.TryGetValue(serviceName, out desc))
                     return new JsonResponse(400, "Bad Request", new { success = false, message = "Unknown service name '{0}'".F(serviceName) });
 
-                // Report this service descriptor:
+                if (path.Length == 2)
+                {
+                    // Report this service descriptor:
+                    return new JsonResponse(200, "OK", new
+                    {
+                        success = true,
+                        service = new
+                        {
+                            desc.Name,
+                            Base = desc.BaseService != null ? desc.BaseService.Name : null,
+                            desc.Connection,
+                            desc.Methods
+                        }
+                    });
+                }
+                if (path.Length > 3)
+                {
+                    return new JsonResponse(400, "Bad Request", new { success = false, message = "Too many path components supplied" });
+                }
+
+                // Find method:
+                string methodName = path[2];
+                MethodDescriptor method;
+                if (!desc.Methods.TryGetValue(methodName, out method))
+                    return new JsonResponse(400, "Bad Request", new { success = false, message = "Unknown method name '{0}'".F(methodName) });
+
+                // Report this method descriptor:
                 return new JsonResponse(200, "OK", new
                 {
                     success = true,
-                    service = new
-                    {
-                        desc.Name,
-                        Base = desc.BaseService != null ? desc.BaseService.Name : null,
-                        desc.Connection,
-                        desc.Methods
-                    }
+                    method
                 });
             }
             else if (path[0] == "data")

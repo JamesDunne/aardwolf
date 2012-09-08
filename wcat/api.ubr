@@ -57,5 +57,11 @@ scenario
             url         = "/data/sis;core;v1/GetStudent?id=3";
             statuscode  = 200;
         }
+
+        request
+        {
+            url         = "/data/sis;quad;v1/Questionable?id=3";
+            statuscode  = 500;
+        }
     }
 }

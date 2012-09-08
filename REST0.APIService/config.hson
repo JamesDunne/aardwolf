@@ -38,7 +38,7 @@
             // This is the base dictionary. Its values may be overridden in derived services.
             "$": {
                 // Here we define the database view names for versioning purposes:
-                "Student":  "vw001_Student",
+                "Student":      "vw001_Student",
                 // 'Student;st' is a list of the columns commonly selected from the 'Student' view using the
                 // 'st' alias:
                 "Student;st":   "st.StudentID, st.FirstName, st.LastName"
@@ -82,12 +82,13 @@
                 // Define a Questionable method to demonstrate deprecation:
                 "Questionable": {
                     "parameters": {
-                        // Bad method is missing the "@id" parameter.
+                        "id": { "sqlName": "@id", "type": "StudentID" }
                     },
                     "query": {
-                        "from":     "${Student} st",
-                        "where":    "st.WrongID = @id",
-                        "select":   "st.StudentID"
+                        "xmlns:sis":    "http://sis.example.org/sis/core/v1",
+                        "from":         "${Student} st",
+                        "where":        "st.WrongID = @id",
+                        "select":       "st.StudentID"
                     }
                 }
             }
