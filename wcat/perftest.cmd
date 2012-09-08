@@ -1,1 +1,1 @@
-"%ProgramW6432%\wcat\wcat.wsf" -terminate -run -t api.ubr -s localhost -v 100
+"%ProgramW6432%\wcat\wcat.wsf" -terminate -run -t api.ubr -s localhost -v 1000
