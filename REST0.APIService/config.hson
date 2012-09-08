@@ -33,7 +33,7 @@
             // Here we define the database view names for versioning purposes:
             "Student":  "vw_Student",
         },
-        // This is version "v1" of the "core" "sis" service offering:
+        // This is version "v1" of the "core":
         "sis;core;v1": {
             // This is the base dictionary. Its values may be overridden in derived services.
             "$": {
@@ -47,9 +47,9 @@
             // The shared DB connection for all methods (but may be overridden per method):
             "connection": {
                 // Data Source:
-                "ds": "servername",
+                "ds": "(local)\\SQLEXPRESS",
                 // Initial Catalog:
-                "ic": "database"
+                "ic": "APITest"
                 // NOTE: If "uid" is missing, SSPI is assumed.
                 // User ID:
                 //"uid": "username"

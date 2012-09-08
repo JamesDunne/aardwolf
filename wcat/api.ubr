@@ -1,6 +1,6 @@
 scenario
 {
-    name    = "Home Page";
+    name    = "API";
 
     warmup      = 10;
     duration    = 60;
@@ -25,14 +25,14 @@ scenario
         version     = HTTP11;
 
         // send keep-alive header
-        //setheader
-        //{
-        //    name    = "Connection";
-        //    value   = "keep-alive";
-        //}
+        setheader
+        {
+            name    = "Connection";
+            value   = "keep-alive";
+        }
 
         // keep the connection alive after the request
-        //close       = ka;
+        close       = ka;
     }
 
     transaction
@@ -42,25 +42,19 @@ scenario
 
         request
         {
-            url         = "/";
-            statuscode  = 302;
-        }
-
-        request
-        {
-            url         = "/foo";
+            url         = "/data/sis;core;v1/GetStudent?id=1";
             statuscode  = 200;
         }
 
         request
         {
-            url         = "/foo";
+            url         = "/data/sis;core;v1/GetStudent?id=2";
             statuscode  = 200;
         }
 
         request
         {
-            url         = "/foo";
+            url         = "/data/sis;core;v1/GetStudent?id=3";
             statuscode  = 200;
         }
     }

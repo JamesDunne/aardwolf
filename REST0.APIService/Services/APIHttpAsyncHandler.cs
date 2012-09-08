@@ -415,7 +415,7 @@ namespace REST0.APIService.Services
                 }
                 catch (Exception ex)
                 {
-                    Trace.WriteLine(ex.ToString());
+                    Console.Error.WriteLine(ex.ToString());
 
                     // Fall back on loading a local file:
                     goto loadFile;
@@ -436,7 +436,7 @@ namespace REST0.APIService.Services
                 }
                 catch (Exception ex)
                 {
-                    Trace.WriteLine(ex.ToString());
+                    Console.Error.WriteLine(ex.ToString());
                     return null;
                 }
             }
