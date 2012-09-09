@@ -62,11 +62,18 @@ namespace REST0.APIService.Services
 
         #region Dealing with remote-fetch of configuration data
 
-        static string getValue(JProperty prop)
+        static string getString(JProperty prop)
         {
             if (prop == null) return null;
             if (prop.Value.Type == JTokenType.Null) return null;
             return (string)((JValue)prop.Value).Value;
+        }
+
+        static bool? getBool(JProperty prop)
+        {
+            if (prop == null) return null;
+            if (prop.Value.Type == JTokenType.Null) return null;
+            return (bool?)((JValue)prop.Value).Value;
         }
 
         static string interpolate(string input, Func<string, string> lookup)
@@ -181,7 +188,7 @@ namespace REST0.APIService.Services
             {
                 // Extract the key/value pairs onto a copy of the token dictionary:
                 foreach (var prop in ((JObject)jpTokens.Value).Properties())
-                    rootTokens[prop.Name] = getValue(prop);
+                    rootTokens[prop.Name] = getString(prop);
             }
 
             // Parse each service descriptor:
@@ -205,7 +212,7 @@ namespace REST0.APIService.Services
                 {
                     // NOTE(jsd): Forward references are not allowed. Base service
                     // must be defined before the current service in document order.
-                    baseService = tmpServices[getValue(jpBase)];
+                    baseService = tmpServices[getString(jpBase)];
 
                     // Create copies of what's inherited from the base service to mutate:
                     tokens = new Dictionary<string, string>(baseService.Tokens);
@@ -243,7 +250,7 @@ namespace REST0.APIService.Services
                     // Extract the key/value pairs onto our token dictionary:
                     foreach (var prop in ((JObject)jpTokens.Value).Properties())
                         // NOTE(jsd): No interpolation over tokens themselves.
-                        tokens[prop.Name] = getValue(prop);
+                        tokens[prop.Name] = getString(prop);
                 }
 
                 // A lookup-or-null function used with `interpolate`:
@@ -266,10 +273,10 @@ namespace REST0.APIService.Services
                     foreach (var prop in ((JObject)jpConnection.Value).Properties())
                         switch (prop.Name)
                         {
-                            case "ds": conn.DataSource = interpolate(getValue(prop), tokenLookup); break;
-                            case "ic": conn.InitialCatalog = interpolate(getValue(prop), tokenLookup); break;
-                            case "uid": conn.UserID = interpolate(getValue(prop), tokenLookup); break;
-                            case "pwd": conn.Password = interpolate(getValue(prop), tokenLookup); break;
+                            case "ds": conn.DataSource = interpolate(getString(prop), tokenLookup); break;
+                            case "ic": conn.InitialCatalog = interpolate(getString(prop), tokenLookup); break;
+                            case "uid": conn.UserID = interpolate(getString(prop), tokenLookup); break;
+                            case "pwd": conn.Password = interpolate(getString(prop), tokenLookup); break;
                             default: break;
                         }
 
@@ -316,10 +323,36 @@ namespace REST0.APIService.Services
                     foreach (var jpParam in ((JObject)jpParameterTypes.Value).Properties())
                     {
                         var jpType = ((JObject)jpParam.Value).Property("type");
+
+                        var type = interpolate(getString(jpType), tokenLookup);
+                        int? length = null;
+                        int? scale = null;
+
+                        int idx = type.LastIndexOf('(');
+                        if (idx != -1)
+                        {
+                            Debug.Assert(type[type.Length - 1] == ')');
+
+                            int comma = type.LastIndexOf(',');
+                            if (comma == -1)
+                            {
+                                length = Int32.Parse(type.Substring(idx + 1, type.Length - idx - 2));
+                            }
+                            else
+                            {
+                                length = Int32.Parse(type.Substring(idx + 1, comma - idx - 1));
+                                scale = Int32.Parse(type.Substring(comma + 1, type.Length - comma - 2));
+                            }
+
+                            type = type.Substring(0, idx);
+                        }
+
                         parameterTypes[jpParam.Name] = new ParameterTypeDescriptor()
                         {
                             Name = jpParam.Name,
-                            Type = interpolate(getValue(jpType), tokenLookup)
+                            Type = type,
+                            Length = length,
+                            Scale = scale,
                         };
                     }
                 }
@@ -354,7 +387,7 @@ namespace REST0.APIService.Services
                         methods[jpMethod.Name] = method;
 
                         // Parse the definition:
-                        method.DeprecatedMessage = interpolate(getValue(joMethod.Property("deprecated")), tokenLookup);
+                        method.DeprecatedMessage = interpolate(getString(joMethod.Property("deprecated")), tokenLookup);
 
                         // TODO: parse "connection"
 
@@ -368,8 +401,9 @@ namespace REST0.APIService.Services
                                 var param = new ParameterDescriptor()
                                 {
                                     Name = jpParam.Name,
-                                    SqlName = interpolate(getValue(joParam.Property("sqlName")), tokenLookup),
-                                    Type = parameterTypes[interpolate(getValue(joParam.Property("type")), tokenLookup)]
+                                    SqlName = interpolate(getString(joParam.Property("sqlName")), tokenLookup),
+                                    Type = parameterTypes[interpolate(getString(joParam.Property("type")), tokenLookup)],
+                                    IsOptional = getBool(joParam.Property("optional")) ?? false
                                 };
                                 method.Parameters.Add(jpParam.Name, param);
                             }
@@ -384,16 +418,16 @@ namespace REST0.APIService.Services
                         {
                             var joQuery = (JObject)jpQuery.Value;
                             method.Query = new QueryDescriptor();
-                            // 'from' and 'select' are required:
-                            method.Query.From = interpolate(getValue(joQuery.Property("from")), tokenLookup);
-                            method.Query.Select = interpolate(getValue(joQuery.Property("select")), tokenLookup);
+                            // 'select' is required:
+                            method.Query.Select = interpolate(getString(joQuery.Property("select")), tokenLookup);
                             // The rest are optional:
-                            method.Query.Where = interpolate(getValue(joQuery.Property("where")), tokenLookup);
-                            method.Query.GroupBy = interpolate(getValue(joQuery.Property("groupBy")), tokenLookup);
-                            method.Query.Having = interpolate(getValue(joQuery.Property("having")), tokenLookup);
-                            method.Query.OrderBy = interpolate(getValue(joQuery.Property("orderBy")), tokenLookup);
-                            method.Query.CTEidentifier = interpolate(getValue(joQuery.Property("withCTEidentifier")), tokenLookup);
-                            method.Query.CTEexpression = interpolate(getValue(joQuery.Property("withCTEexpression")), tokenLookup);
+                            method.Query.From = interpolate(getString(joQuery.Property("from")), tokenLookup);
+                            method.Query.Where = interpolate(getString(joQuery.Property("where")), tokenLookup);
+                            method.Query.GroupBy = interpolate(getString(joQuery.Property("groupBy")), tokenLookup);
+                            method.Query.Having = interpolate(getString(joQuery.Property("having")), tokenLookup);
+                            method.Query.OrderBy = interpolate(getString(joQuery.Property("orderBy")), tokenLookup);
+                            method.Query.CTEidentifier = interpolate(getString(joQuery.Property("withCTEidentifier")), tokenLookup);
+                            method.Query.CTEexpression = interpolate(getString(joQuery.Property("withCTEexpression")), tokenLookup);
 
                             // Parse "xmlns:prefix": "http://uri.example.org/namespace" properties for WITH XMLNAMESPACES:
                             // TODO: Are xmlns namespace prefixes case-insensitive?
@@ -401,7 +435,7 @@ namespace REST0.APIService.Services
                             foreach (var jpXmlns in joQuery.Properties())
                             {
                                 if (!jpXmlns.Name.StartsWith("xmlns:")) continue;
-                                method.Query.XMLNamespaces.Add(jpXmlns.Name.Substring(6), interpolate(getValue(jpXmlns), tokenLookup));
+                                method.Query.XMLNamespaces.Add(jpXmlns.Name.Substring(6), interpolate(getString(jpXmlns), tokenLookup));
                             }
 
                             {
@@ -458,8 +492,7 @@ namespace REST0.APIService.Services
                                             for (int i = 0; en.MoveNext(); ++i)
                                             {
                                                 var xmlns = en.Current;
-                                                // TODO: properly escape!
-                                                qb.AppendFormat("  '{0}' AS {1}", xmlns.Value, xmlns.Key);
+                                                qb.AppendFormat("  '{0}' AS {1}", xmlns.Value.Replace("\'", "\'\'"), xmlns.Key);
                                                 if (i < method.Query.XMLNamespaces.Count - 1) qb.AppendLine(",");
                                                 else qb.AppendLine();
                                             }
@@ -512,7 +545,7 @@ namespace REST0.APIService.Services
                 foreach (var alias in joAliases.Properties())
                 {
                     // Add the existing ServiceDescriptor reference to the new name:
-                    tmpServices.Add(alias.Name, tmpServices[getValue(alias)]);
+                    tmpServices.Add(alias.Name, tmpServices[getString(alias)]);
                 }
             }
 
@@ -899,6 +932,8 @@ namespace REST0.APIService.Services
 
         static object getSqlValue(string type, string value)
         {
+            if (value == null) return DBNull.Value;
+            if (value == "\0") return DBNull.Value;
             switch (type)
             {
                 case "int": return new System.Data.SqlTypes.SqlInt32(Int32.Parse(value));
@@ -985,26 +1020,36 @@ namespace REST0.APIService.Services
                     bool isValid = true;
                     string message = null;
                     object sqlValue;
+                    string rawValue = req.QueryString[param.Key];
 
-                    try
+                    if (param.Value.IsOptional & (rawValue == null))
                     {
-                        sqlValue = getSqlValue(param.Value.Type.Type, req.QueryString[param.Key]);
+                        sqlValue = DBNull.Value;
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        isValid = false;
-                        sqlValue = null;
-                        message = ex.Message;
+                        try
+                        {
+                            sqlValue = getSqlValue(param.Value.Type.Type, rawValue);
+                        }
+                        catch (Exception ex)
+                        {
+                            isValid = false;
+                            sqlValue = DBNull.Value;
+                            message = ex.Message;
+                        }
                     }
 
                     if (!isValid) return new JsonResult(400, "Invalid parameter value");
 
                     // Get the SQL type:
                     var sqlType = getSqlType(param.Value.Type.Type);
-                    // TODO: Length/Precision specifiers!
 
                     // Add the SQL parameter:
-                    cmd.Parameters.Add(param.Value.Name, sqlType).SqlValue = sqlValue;
+                    var sqlprm = cmd.Parameters.Add(param.Value.Name, sqlType);
+                    if (param.Value.Type.Length != null) sqlprm.Precision = (byte)param.Value.Type.Length.Value;
+                    if (param.Value.Type.Scale != null) sqlprm.Scale = (byte)param.Value.Type.Scale.Value;
+                    sqlprm.SqlValue = sqlValue;
                 }
 
                 //cmd.CommandTimeout = 360;   // seconds
@@ -1031,6 +1076,11 @@ namespace REST0.APIService.Services
                 {
                     // Execute the query asynchronously:
                     dr = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SequentialAccess | System.Data.CommandBehavior.CloseConnection);
+                }
+                catch (ArgumentException aex)
+                {
+                    // SQL Parameter validation only gives `null` for `aex.ParamName`.
+                    return new JsonResult(400, aex.Message);
                 }
                 catch (SqlException ex)
                 {
@@ -1173,12 +1223,14 @@ namespace REST0.APIService.Services
                 // TODO: Is it deprecated?
 
                 // Check required parameters:
-                foreach (var paramName in method.Parameters.Keys)
+                foreach (var param in method.Parameters)
                 {
-                    if (!req.QueryString.AllKeys.Contains(paramName))
-                        return new JsonResponse(400, "Bad Request", new { success = false, message = "Missing required parameter '{0}'".F(paramName) });
+                    if (param.Value.IsOptional) continue;
+                    if (!req.QueryString.AllKeys.Contains(param.Key))
+                        return new JsonResponse(400, "Bad Request", new { success = false, message = "Missing required parameter '{0}'".F(param.Key) });
                 }
 
+                // Execute the query:
                 var response = await ExecuteQuery(req, method);
 
                 return new JsonResponse(response.statusCode, "OK", response);

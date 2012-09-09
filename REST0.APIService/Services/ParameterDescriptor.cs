@@ -10,5 +10,6 @@ namespace REST0.APIService.Services
         public string Name { get; set; }
         public string SqlName { get; set; }
         public ParameterTypeDescriptor Type { get; set; }
+        public bool IsOptional { get; set; }
     }
 }

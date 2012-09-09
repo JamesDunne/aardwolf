@@ -57,7 +57,10 @@
             },
             // This is where we define common parameter types:
             "parameterTypes": {
-                "StudentID": { "type": "int" }
+                "StudentID": { "type": "int" },
+                "FirstName": { "type": "nvarchar(50)" },
+                "DateTimeOffset": { "type": "datetimeoffset(7)" },
+                "Grade": { "type": "decimal(8,4)" }
             },
             // This is the main method definition section:
             "methods": {
@@ -82,13 +85,22 @@
                 // Define a Questionable method to demonstrate deprecation:
                 "Questionable": {
                     "parameters": {
-                        "id": { "sqlName": "@id", "type": "StudentID" }
+                        "id": { "sqlName": "@id", "type": "StudentID" },
+                        "test": { "sqlName": "@test", "type": "Grade", "optional": true }
                     },
                     "query": {
                         "xmlns:sis":    "http://sis.example.org/sis/core/v1",
                         "from":         "${Student} st",
                         "where":        "st.WrongID = @id",
                         "select":       "st.StudentID"
+                    }
+                },
+                "Test": {
+                    "parameters": {
+                        "test": { "sqlName": "@test", "type": "Grade", "optional": true }
+                    },
+                    "query": {
+                        "select":       "@test AS Test"
                     }
                 }
             }
