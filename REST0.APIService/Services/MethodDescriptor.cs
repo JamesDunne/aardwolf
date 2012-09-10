@@ -30,4 +30,26 @@ namespace REST0.APIService.Services
             };
         }
     }
+
+    class MethodDescriptorSerialized
+    {
+        [JsonIgnore()]
+        readonly MethodDescriptor desc;
+
+        internal MethodDescriptorSerialized(MethodDescriptor desc)
+        {
+            this.desc = desc;
+        }
+
+        [JsonProperty("deprecated", NullValueHandling = NullValueHandling.Ignore)]
+        public string DeprecatedMessage { get { return desc.DeprecatedMessage; } }
+        [JsonProperty("parameters")]
+        public IDictionary<string, ParameterDescriptorSerialized> Parameters { get { return desc.Parameters.ToDictionary(p => p.Key, p => new ParameterDescriptorSerialized(p.Value), StringComparer.OrdinalIgnoreCase); } }
+        [JsonProperty("connection")]
+        public string Connection { get { return desc.Connection.ConnectionString; } }
+        [JsonProperty("sql", NullValueHandling = NullValueHandling.Ignore)]
+        public string SQL { get { return desc.Query.SQL; } }
+        [JsonProperty("errors", NullValueHandling = NullValueHandling.Ignore)]
+        public List<string> Errors { get { return desc.Query.Errors; } }
+    }
 }

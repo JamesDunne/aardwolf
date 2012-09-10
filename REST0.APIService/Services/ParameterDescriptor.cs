@@ -17,4 +17,22 @@ namespace REST0.APIService.Services
         [JsonProperty("optional")]
         public bool IsOptional { get; set; }
     }
+
+    class ParameterDescriptorSerialized
+    {
+        [JsonIgnore()]
+        readonly ParameterDescriptor desc;
+
+        internal ParameterDescriptorSerialized(ParameterDescriptor desc)
+        {
+            this.desc = desc;
+        }
+
+        [JsonProperty("sqlName")]
+        public string SqlName { get { return desc.SqlName; } }
+        [JsonProperty("type")]
+        public string Type { get { return desc.Type.Name; } }
+        [JsonProperty("optional", NullValueHandling = NullValueHandling.Ignore)]
+        public bool? IsOptional { get { return desc.IsOptional ? true : (bool?)null; } }
+    }
 }

@@ -1200,8 +1200,18 @@ namespace REST0.APIService.Services
                     // Report all service descriptors:
                     return new JsonResponse(200, "OK", new
                     {
+                        success = true,
+                        statusCode = 200,
                         hash = services.HashHexString,
-                        services = services.Value //.Select(pair => pair.Value).ToDictionary(s => s.Name)
+                        services = services.Value.ToDictionary(s => s.Key, s => s.Key != s.Value.Name ? (object)s.Value.Name : (object)new
+                        {
+                            name = s.Value.Name,
+                            @base = s.Value.BaseService != null ? s.Value.BaseService.Name : null,
+                            tokens = s.Value.Tokens,
+                            connection = s.Value.Connection.ConnectionString,
+                            parameterTypes = s.Value.ParameterTypes,
+                            methods = s.Value.Methods.ToDictionary(m => m.Key, m => new MethodDescriptorSerialized(m.Value), StringComparer.OrdinalIgnoreCase)
+                        })
                     });
                 }
 
@@ -1218,7 +1228,17 @@ namespace REST0.APIService.Services
                     return new JsonResponse(200, "OK", new
                     {
                         success = true,
-                        service = desc
+                        statusCode = 200,
+                        hash = services.HashHexString,
+                        service = new
+                        {
+                            name = desc.Name,
+                            @base = desc.BaseService != null ? desc.BaseService.Name : null,
+                            tokens = desc.Tokens,
+                            connection = desc.Connection.ConnectionString,
+                            parameterTypes = desc.ParameterTypes,
+                            methods = desc.Methods.ToDictionary(m => m.Key, m => new MethodDescriptorSerialized(m.Value), StringComparer.OrdinalIgnoreCase)
+                        }
                     });
                 }
                 if (path.Length > 3)
@@ -1236,7 +1256,9 @@ namespace REST0.APIService.Services
                 return new JsonResponse(200, "OK", new
                 {
                     success = true,
-                    method
+                    statusCode = 200,
+                    hash = services.HashHexString,
+                    method = new MethodDescriptorSerialized(method)
                 });
             }
             else if (path[0] == "data")

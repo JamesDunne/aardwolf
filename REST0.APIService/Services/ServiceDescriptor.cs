@@ -10,7 +10,7 @@ namespace REST0.APIService.Services
         public string Name { get; set; }
         [JsonIgnore()]
         public ServiceDescriptor BaseService { get; set; }
-        [JsonIgnore()]
+        [JsonProperty("$")]
         public IDictionary<string, string> Tokens { get; set; }
         [JsonProperty("connection")]
         public ConnectionDescriptor Connection { get; set; }
