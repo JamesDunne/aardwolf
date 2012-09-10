@@ -49,12 +49,12 @@ namespace REST0.Implementation
 
         public void Run(params string[] uriPrefixes)
         {
-            ServicePointManager.EnableDnsRoundRobin = false;
-            ServicePointManager.UseNagleAlgorithm = true;
-            ServicePointManager.SetTcpKeepAlive(true, 10000, 2500);
-            ServicePointManager.DefaultConnectionLimit = 1000;
+            //ServicePointManager.EnableDnsRoundRobin = false;
+            ServicePointManager.UseNagleAlgorithm = false;
+            ServicePointManager.SetTcpKeepAlive(true, 5000, 500);
+            ServicePointManager.DefaultConnectionLimit = 10000;
             ServicePointManager.Expect100Continue = false;
-            ServicePointManager.MaxServicePoints = 1000;
+            ServicePointManager.MaxServicePoints = 01000;
 
             // Establish a host-handler context:
             _hostContext = new HostContext(this, _handler);
@@ -139,6 +139,10 @@ namespace REST0.Implementation
 
                 // Close the response and send it to the client:
                 listenerContext.Response.Close();
+            }
+            catch (HttpListenerException hex)
+            {
+                // Ignored.
             }
             catch (Exception ex)
             {

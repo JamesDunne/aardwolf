@@ -158,6 +158,6 @@
         // local files directly into this document. This helps break out large service offerings
         // into more manageable divisions. `@import` directives may be placed at any point in the
         // HSON document, so long as the final result produces a well-formed JSON result.
-        "sis;quad;v4": @import("sis;quad;v4.hson")
+        @import("sis;quad;v4.hson")
     }
 }

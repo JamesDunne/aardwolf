@@ -310,9 +310,27 @@ namespace REST0.APIService.Services
                                 // Raw SQL query; it must be a SELECT query but we can't validate that without
                                 // some nasty parsing.
 
-                                // Remove comments from the code:
-                                sql = stripSQLComments(sql);
-                                method.Query.SQL = sql;
+                                // Remove comments from the code and trim leading and trailing whitespace:
+                                sql = stripSQLComments(sql).Trim();
+
+                                // Crude attempts to verify a SELECT form:
+                                // A better approach would be to parse the root-level keywords (ignoring subqueries)
+                                // and skipping WITH.
+                                if (sql.StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase) ||
+                                    sql.StartsWith("INSERT", StringComparison.OrdinalIgnoreCase) ||
+                                    sql.StartsWith("DELETE", StringComparison.OrdinalIgnoreCase) ||
+                                    sql.StartsWith("DROP", StringComparison.OrdinalIgnoreCase) ||
+                                    sql.StartsWith("CREATE", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    method.Query.Errors = new List<string>
+                                    {
+                                        "Query must be a SELECT query."
+                                    };
+                                }
+                                else
+                                {
+                                    method.Query.SQL = sql;
+                                }
                             }
                             else
                             {

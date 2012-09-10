@@ -1,5 +1,4 @@
-﻿// Version "sis;quad;v4":
-{
+﻿"sis;quad;v4": {
     "base": "sis;quad;v3",
     "methods": {
         "GetStudentsByLastName": {
@@ -10,6 +9,14 @@
                 "from":         "${Student} st",
                 "where":        "(st.LastName = @lastName)",
                 "select":       "st.StudentID AS __obj$Student, ${Student;st}"
+            }
+        },
+        "TestRawSQL": {
+            "query": {
+                // Raw SQL code is fine, so long as it is a SELECT query:
+                "sql":  @"
+SELECT  ${Student;st}
+FROM    ${Student} st WITH (NOLOCK)"
             }
         }
     }
