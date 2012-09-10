@@ -26,15 +26,22 @@
         "sis;core": "sis;core;v1",
         "sis;quad": "sis;quad;v3"
     },
+    // The "$" key indicates a shared dictionary of key/value pairs. This is the global dictionary.
+    // Its values may be overridden per service. These values can be interpolated in string literals with
+    // the interpolation syntax `${key}`. Key names may be anything, excluding the `}` character.
+    "$": {
+        // Here we define the database view names for versioning purposes:
+        "Student":  "vw_Student",
+    },
+    // This is the global set of common query parameter types. This set is inherited by each root service and their derived services.
+    "parameterTypes": {
+        "StudentID":        { "type": "int" },
+        "FirstName":        { "type": "nvarchar(50)" },
+        "DateTimeOffset":   { "type": "datetimeoffset(7)" },
+        "Grade":            { "type": "decimal(8,4)" }
+    },
     // This is the main services description section:
     "services": {
-        // The "$" key indicates a shared dictionary of key/value pairs. This is the global dictionary.
-        // Its values may be overridden per service. These values can be interpolated in string literals with
-        // the interpolation syntax `${key}`. Key names may be anything, excluding the `}` character.
-        "$": {
-            // Here we define the database view names for versioning purposes:
-            "Student":  "vw_Student",
-        },
         // This is version "v1" of the "core":
         "sis;core;v1": {
             // This is the base dictionary. Its values may be overridden in derived services.
@@ -57,20 +64,13 @@
                 // Password:
                 //"pwd": "password"
             },
-            // This is where we define common parameter types. These are inherited in derived services.
-            "parameterTypes": {
-                "StudentID":        { "type": "int" },
-                "FirstName":        { "type": "nvarchar(50)" },
-                "DateTimeOffset":   { "type": "datetimeoffset(7)" },
-                "Grade":            { "type": "decimal(8,4)" }
-            },
             // This is the main method definition section:
             "methods": {
                 // Each key is a specific method name; method names must be unique:
                 "GetStudent": {
                     // This is the mapping of which query-string parameter names map to which SQL parameters:
                     "parameters": {
-                        "id":       { "sqlName": "@id", "type": "StudentID" }
+                        "id":       { "sqlName": "@id",     "type": "StudentID" }
                     },
                     // The individual clauses of the SELECT query, appearing in any order:
                     "query": {
@@ -133,11 +133,27 @@
         },
         "sis;quad;v3": {
             "base": "sis;quad;v2",
+            // Add new parameter types:
+            "parameterTypes": {
+                "LastName":     { "type": "nvarchar(50)" }
+            },
             // Methods are removed by assigning `null`:
             "methods": {
                 // We remove the "Questionable" method here by setting it to `null`. Requests to use it are
                 // given a "400 Bad Request" response.
-                "Questionable": null
+                "Questionable": null,
+                // Add a new method:
+                "GetStudentByName": {
+                    "parameters": {
+                        "firstName":    { "sqlName": "@firstName",  "type": "FirstName" },
+                        "lastName":     { "sqlName": "@lastName",   "type": "LastName" }
+                    },
+                    "query": {
+                        "from":         "${Student} st",
+                        "where":        "(st.FirstName = @firstName) AND (st.LastName = @lastName)",
+                        "select":       "st.StudentID AS __obj$Student, ${Student;st}"
+                    }
+                }
             }
         }
     }

@@ -175,21 +175,26 @@ namespace REST0.APIService.Services
 
             var tmpServices = new Dictionary<string, ServiceDescriptor>(StringComparer.OrdinalIgnoreCase);
 
-            // 'services' section is not optional:
-            JToken jtServices;
-            if (!doc.TryGetValue("services", out jtServices))
-                return false;
-            var joServices = (JObject)jtServices;
-
             // Parse the root token dictionary first:
             var rootTokens = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var jpTokens = joServices.Property("$");
+            var jpTokens = doc.Property("$");
             if (jpTokens != null)
             {
                 // Extract the key/value pairs onto a copy of the token dictionary:
                 foreach (var prop in ((JObject)jpTokens.Value).Properties())
                     rootTokens[prop.Name] = getString(prop);
             }
+
+            // Parse root parameter types:
+            var rootParameterTypes = new Dictionary<string, ParameterTypeDescriptor>(StringComparer.OrdinalIgnoreCase);
+            var jpParameterTypes = doc.Property("parameterTypes");
+            parseParameterTypes(rootParameterTypes, (s) => s, jpParameterTypes);
+
+            // 'services' section is not optional:
+            JToken jtServices;
+            if (!doc.TryGetValue("services", out jtServices))
+                return false;
+            var joServices = (JObject)jtServices;
 
             // Parse each service descriptor:
             foreach (var jpService in joServices.Properties())
@@ -239,7 +244,7 @@ namespace REST0.APIService.Services
                     // Nothing inherited:
                     conn = null;
                     tokens = new Dictionary<string, string>(rootTokens, StringComparer.OrdinalIgnoreCase);
-                    parameterTypes = new Dictionary<string, ParameterTypeDescriptor>(StringComparer.OrdinalIgnoreCase);
+                    parameterTypes = new Dictionary<string, ParameterTypeDescriptor>(rootParameterTypes, StringComparer.OrdinalIgnoreCase);
                     methods = new Dictionary<string, MethodDescriptor>(StringComparer.OrdinalIgnoreCase);
                 }
 
@@ -316,46 +321,9 @@ namespace REST0.APIService.Services
                     }
                 }
 
-                var jpParameterTypes = joService.Property("parameterTypes");
-                if (jpParameterTypes != null)
-                {
-                    // Define all the parameter types:
-                    foreach (var jpParam in ((JObject)jpParameterTypes.Value).Properties())
-                    {
-                        var jpType = ((JObject)jpParam.Value).Property("type");
-
-                        var type = interpolate(getString(jpType), tokenLookup);
-                        int? length = null;
-                        int? scale = null;
-
-                        int idx = type.LastIndexOf('(');
-                        if (idx != -1)
-                        {
-                            Debug.Assert(type[type.Length - 1] == ')');
-
-                            int comma = type.LastIndexOf(',');
-                            if (comma == -1)
-                            {
-                                length = Int32.Parse(type.Substring(idx + 1, type.Length - idx - 2));
-                            }
-                            else
-                            {
-                                length = Int32.Parse(type.Substring(idx + 1, comma - idx - 1));
-                                scale = Int32.Parse(type.Substring(comma + 1, type.Length - comma - 2));
-                            }
-
-                            type = type.Substring(0, idx);
-                        }
-
-                        parameterTypes[jpParam.Name] = new ParameterTypeDescriptor()
-                        {
-                            Name = jpParam.Name,
-                            Type = type,
-                            Length = length,
-                            Scale = scale,
-                        };
-                    }
-                }
+                // Parse the parameter types:
+                jpParameterTypes = joService.Property("parameterTypes");
+                parseParameterTypes(parameterTypes, (s) => interpolate(s, tokenLookup), jpParameterTypes);
 
                 var jpMethods = joService.Property("methods");
                 if (jpMethods != null)
@@ -398,12 +366,16 @@ namespace REST0.APIService.Services
                             foreach (var jpParam in ((JObject)jpParameters.Value).Properties())
                             {
                                 var joParam = ((JObject)jpParam.Value);
+                                var sqlName = interpolate(getString(joParam.Property("sqlName")), tokenLookup);
+                                var typeName = interpolate(getString(joParam.Property("type")), tokenLookup);
+                                var isOptional = getBool(joParam.Property("optional")) ?? false;
+
                                 var param = new ParameterDescriptor()
                                 {
                                     Name = jpParam.Name,
-                                    SqlName = interpolate(getString(joParam.Property("sqlName")), tokenLookup),
-                                    Type = parameterTypes[interpolate(getString(joParam.Property("type")), tokenLookup)],
-                                    IsOptional = getBool(joParam.Property("optional")) ?? false
+                                    SqlName = sqlName,
+                                    Type = parameterTypes[typeName],
+                                    IsOptional = isOptional
                                 };
                                 method.Parameters.Add(jpParam.Name, param);
                             }
@@ -554,6 +526,49 @@ namespace REST0.APIService.Services
             services = new SHA1Hashed<IDictionary<string, ServiceDescriptor>>(tmpServices, config.Hash);
 
             return true;
+        }
+
+        private static void parseParameterTypes(IDictionary<string, ParameterTypeDescriptor> parameterTypes, Func<string, string> interpolate, JProperty jpParameterTypes)
+        {
+            if (jpParameterTypes != null)
+            {
+                // Define all the parameter types:
+                foreach (var jpParam in ((JObject)jpParameterTypes.Value).Properties())
+                {
+                    var jpType = ((JObject)jpParam.Value).Property("type");
+
+                    var type = interpolate(getString(jpType));
+                    int? length = null;
+                    int? scale = null;
+
+                    int idx = type.LastIndexOf('(');
+                    if (idx != -1)
+                    {
+                        Debug.Assert(type[type.Length - 1] == ')');
+
+                        int comma = type.LastIndexOf(',');
+                        if (comma == -1)
+                        {
+                            length = Int32.Parse(type.Substring(idx + 1, type.Length - idx - 2));
+                        }
+                        else
+                        {
+                            length = Int32.Parse(type.Substring(idx + 1, comma - idx - 1));
+                            scale = Int32.Parse(type.Substring(comma + 1, type.Length - comma - 2));
+                        }
+
+                        type = type.Substring(0, idx);
+                    }
+
+                    parameterTypes[jpParam.Name] = new ParameterTypeDescriptor()
+                    {
+                        Name = jpParam.Name,
+                        Type = type,
+                        Length = length,
+                        Scale = scale,
+                    };
+                }
+            }
         }
 
         SHA1Hashed<JObject> ReadJSONStream(Stream input)
