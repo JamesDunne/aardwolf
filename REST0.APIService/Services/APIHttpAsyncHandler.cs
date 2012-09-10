@@ -461,7 +461,7 @@ namespace REST0.APIService.Services
                                 );
 
                                 // This is a very conservative approach and will lead to false-positives for things like EXISTS() and sub-queries:
-                                var errors = method.Query.Errors = new List<string>(6);
+                                var errors = new List<string>(6);
                                 if (containsSQLkeywords(select, "from", "into", "where", "group", "having", "order", "for"))
                                     errors.Add("SELECT clause cannot contain FROM, INTO, WHERE, GROUP BY, HAVING, ORDER BY, or FOR");
                                 if (containsSQLkeywords(from, "where", "group", "having", "order", "for"))
@@ -478,6 +478,7 @@ namespace REST0.APIService.Services
                                 if (errors.Count > 0)
                                 {
                                     // No query for you.
+                                    method.Query.Errors = errors;
                                     method.Query.SQL = null;
                                 }
                                 else
@@ -879,6 +880,50 @@ namespace REST0.APIService.Services
             return false;
         }
 
+        static JsonResult getErrorResponse(Exception ex)
+        {
+            JsonResultException jex;
+            JsonSerializationException jsex;
+            System.Data.SqlClient.SqlException sqex;
+
+            object innerException = null;
+            if (ex.InnerException != null)
+                innerException = (object)getErrorResponse(ex.InnerException);
+
+            if ((jex = ex as JsonResultException) != null)
+            {
+                return new JsonResult(jex.StatusCode, jex.Message);
+            }
+            else if ((jsex = ex as JsonSerializationException) != null)
+            {
+                object errorData = new
+                {
+                    type = ex.GetType().FullName,
+                    message = ex.Message,
+                    stackTrace = ex.StackTrace,
+                    innerException
+                };
+
+                return new JsonResult(500, jsex.Message, new[] { errorData });
+            }
+            else if ((sqex = ex as System.Data.SqlClient.SqlException) != null)
+            {
+                return sqlError(sqex);
+            }
+            else
+            {
+                object errorData = new
+                {
+                    type = ex.GetType().FullName,
+                    message = ex.Message,
+                    stackTrace = ex.StackTrace,
+                    innerException
+                };
+
+                return new JsonResult(500, ex.Message, new[] { errorData });
+            }
+        }
+
         static JsonResult sqlError(System.Data.SqlClient.SqlException sqex)
         {
             int statusCode = 500;
@@ -1065,9 +1110,9 @@ namespace REST0.APIService.Services
                     // Open the connection asynchronously:
                     await conn.OpenAsync();
                 }
-                catch (SqlException ex)
+                catch (Exception ex)
                 {
-                    return sqlError(ex);
+                    return getErrorResponse(ex);
                 }
 
                 // Execute the query:
@@ -1082,9 +1127,9 @@ namespace REST0.APIService.Services
                     // SQL Parameter validation only gives `null` for `aex.ParamName`.
                     return new JsonResult(400, aex.Message);
                 }
-                catch (SqlException ex)
+                catch (Exception ex)
                 {
-                    return sqlError(ex);
+                    return getErrorResponse(ex);
                 }
 
                 try
@@ -1141,13 +1186,7 @@ namespace REST0.APIService.Services
                     return new JsonResponse(200, "OK", new
                     {
                         hash = services.HashHexString,
-                        services = services.Value.Select(pair => new
-                        {
-                            pair.Value.Name,
-                            Base = pair.Value.BaseService != null ? pair.Value.BaseService.Name : null,
-                            pair.Value.Connection,
-                            pair.Value.Methods
-                        }).ToDictionary(s => s.Name)
+                        services = services.Value //.Select(pair => pair.Value).ToDictionary(s => s.Name)
                     });
                 }
 
@@ -1164,13 +1203,7 @@ namespace REST0.APIService.Services
                     return new JsonResponse(200, "OK", new
                     {
                         success = true,
-                        service = new
-                        {
-                            desc.Name,
-                            Base = desc.BaseService != null ? desc.BaseService.Name : null,
-                            desc.Connection,
-                            desc.Methods
-                        }
+                        service = desc
                     });
                 }
                 if (path.Length > 3)

@@ -22,7 +22,7 @@
     // This is the main set of aliases for services:
     "aliases": {
         "sis;core": "sis;core;v1",
-        "sis;quad": "sis;quad;v2"
+        "sis;quad": "sis;quad;v3"
     },
     // This is the main services description section:
     "services": {
@@ -82,19 +82,6 @@
                         "select":   "st.StudentID AS __obj$Student, ${Student;st}"
                     }
                 },
-                // Define a Questionable method to demonstrate deprecation:
-                "Questionable": {
-                    "parameters": {
-                        "id": { "sqlName": "@id", "type": "StudentID" },
-                        "test": { "sqlName": "@test", "type": "Grade", "optional": true }
-                    },
-                    "query": {
-                        "xmlns:sis":    "http://sis.example.org/sis/core/v1",
-                        "from":         "${Student} st",
-                        "where":        "st.WrongID = @id",
-                        "select":       "st.StudentID"
-                    }
-                },
                 "Test": {
                     "parameters": {
                         "test": { "sqlName": "@test", "type": "Grade", "optional": true }
@@ -113,16 +100,34 @@
             "base": "sis;core;v1",
             // Methods are added to/overwritten over the base service:
             "methods": {
+                // Define a Questionable method to demonstrate deprecation:
+                "Questionable": {
+                    "parameters": {
+                        "id": { "sqlName": "@id", "type": "StudentID" },
+                        "test": { "sqlName": "@test", "type": "Grade", "optional": true }
+                    },
+                    "query": {
+                        "xmlns:sis":    "http://sis.example.org/sis/core/v1",
+                        "from":         "${Student} st",
+                        "where":        "st.WrongID = @id",
+                        "select":       "st.StudentID"
+                    }
+                }
+            }
+        },
+        "sis;quad;v2": {
+            // Based on version "v1" above:
+            "base": "sis;quad;v1",
+            // Methods are added to/overwritten over the base service:
+            "methods": {
                 // We deprecate the "Questionable" method here with a warning message; it may still be used, but
                 // a warning will be issued.
                 "Questionable": { "deprecated": "This method does not correctly query data." }
             }
         },
-        // Version 2:
-        "sis;quad;v2": {
-            // Based on version "v1" above:
-            "base": "sis;quad;v1",
-            // Methods are added to/overwritten over the base service or removed by assigning `null`:
+        "sis;quad;v3": {
+            "base": "sis;quad;v2",
+            // Methods are removed by assigning `null`:
             "methods": {
                 // We remove the "Questionable" method here by setting it to `null`. Requests to use it are
                 // given a "400 Bad Request" response.

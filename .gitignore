@@ -8,3 +8,6 @@ wcat/*.xml
 
 *.suo
 *.user
+
+REST0.APIService/sis.hson
+wcat/sis.ubr
