@@ -76,94 +76,6 @@ namespace REST0.APIService.Services
             return (bool?)((JValue)prop.Value).Value;
         }
 
-        static string interpolate(string input, Func<string, string> lookup)
-        {
-            if (input == null) return null;
-
-            var sbMsg = new StringBuilder(input.Length);
-
-            int i = 0;
-            while (i < input.Length)
-            {
-                if (input[i] != '$')
-                {
-                    sbMsg.Append(input[i]);
-                    ++i;
-                    continue;
-                }
-
-                // We have a '$':
-                ++i;
-                if (i >= input.Length)
-                {
-                    sbMsg.Append('$');
-                    break;
-                }
-
-                if (input[i] != '{')
-                {
-                    // Just a regular old character to go straight through to the final text:
-                    sbMsg.Append('$');
-                    sbMsg.Append(input[i]);
-                    ++i;
-                    continue;
-                }
-
-                // We have a '{':
-
-                ++i;
-                int start = i;
-                while (i < input.Length)
-                {
-                    if (input[i] == '}') break;
-                    ++i;
-                }
-
-                // We hit the end?
-                if (i >= input.Length)
-                {
-                    // FAIL.
-                    i = start;
-                    sbMsg.Append('$');
-                    sbMsg.Append('{');
-                    continue;
-                }
-
-                // Did we hit a real '}' character?
-                if (input[i] != '}')
-                {
-                    // Wasn't a token like we thought, just output the '{' and keep going from there:
-                    i = start;
-                    sbMsg.Append('$');
-                    sbMsg.Append('{');
-                    continue;
-                }
-
-                // We have a token, sweet...
-                string tokenName = input.Substring(start, i - start);
-
-                ++i;
-
-                // Look up the token name:
-                string replText = lookup(tokenName);
-                if (replText != null)
-                {
-                    // Insert the token's value:
-                    sbMsg.Append(replText);
-                }
-                else
-                {
-                    // Token wasn't found, so just insert the text raw:
-                    sbMsg.Append('$');
-                    sbMsg.Append('{');
-                    sbMsg.Append(tokenName);
-                    sbMsg.Append('}');
-                }
-            }
-
-            return sbMsg.ToString();
-        }
-
         async Task<bool> RefreshConfigData()
         {
             // Get the latest config data:
@@ -278,10 +190,10 @@ namespace REST0.APIService.Services
                     foreach (var prop in ((JObject)jpConnection.Value).Properties())
                         switch (prop.Name)
                         {
-                            case "ds": conn.DataSource = interpolate(getString(prop), tokenLookup); break;
-                            case "ic": conn.InitialCatalog = interpolate(getString(prop), tokenLookup); break;
-                            case "uid": conn.UserID = interpolate(getString(prop), tokenLookup); break;
-                            case "pwd": conn.Password = interpolate(getString(prop), tokenLookup); break;
+                            case "ds": conn.DataSource = getString(prop).Interpolate(tokenLookup); break;
+                            case "ic": conn.InitialCatalog = getString(prop).Interpolate(tokenLookup); break;
+                            case "uid": conn.UserID = getString(prop).Interpolate(tokenLookup); break;
+                            case "pwd": conn.Password = getString(prop).Interpolate(tokenLookup); break;
                             default: break;
                         }
 
@@ -323,7 +235,7 @@ namespace REST0.APIService.Services
 
                 // Parse the parameter types:
                 jpParameterTypes = joService.Property("parameterTypes");
-                parseParameterTypes(parameterTypes, (s) => interpolate(s, tokenLookup), jpParameterTypes);
+                parseParameterTypes(parameterTypes, (s) => s.Interpolate(tokenLookup), jpParameterTypes);
 
                 var jpMethods = joService.Property("methods");
                 if (jpMethods != null)
@@ -355,7 +267,7 @@ namespace REST0.APIService.Services
                         methods[jpMethod.Name] = method;
 
                         // Parse the definition:
-                        method.DeprecatedMessage = interpolate(getString(joMethod.Property("deprecated")), tokenLookup);
+                        method.DeprecatedMessage = getString(joMethod.Property("deprecated")).Interpolate(tokenLookup);
 
                         // TODO: parse "connection"
 
@@ -366,8 +278,8 @@ namespace REST0.APIService.Services
                             foreach (var jpParam in ((JObject)jpParameters.Value).Properties())
                             {
                                 var joParam = ((JObject)jpParam.Value);
-                                var sqlName = interpolate(getString(joParam.Property("sqlName")), tokenLookup);
-                                var typeName = interpolate(getString(joParam.Property("type")), tokenLookup);
+                                var sqlName = getString(joParam.Property("sqlName")).Interpolate(tokenLookup);
+                                var typeName = getString(joParam.Property("type")).Interpolate(tokenLookup);
                                 var isOptional = getBool(joParam.Property("optional")) ?? false;
 
                                 var param = new ParameterDescriptor()
@@ -390,27 +302,43 @@ namespace REST0.APIService.Services
                         {
                             var joQuery = (JObject)jpQuery.Value;
                             method.Query = new QueryDescriptor();
-                            // 'select' is required:
-                            method.Query.Select = interpolate(getString(joQuery.Property("select")), tokenLookup);
-                            // The rest are optional:
-                            method.Query.From = interpolate(getString(joQuery.Property("from")), tokenLookup);
-                            method.Query.Where = interpolate(getString(joQuery.Property("where")), tokenLookup);
-                            method.Query.GroupBy = interpolate(getString(joQuery.Property("groupBy")), tokenLookup);
-                            method.Query.Having = interpolate(getString(joQuery.Property("having")), tokenLookup);
-                            method.Query.OrderBy = interpolate(getString(joQuery.Property("orderBy")), tokenLookup);
-                            method.Query.CTEidentifier = interpolate(getString(joQuery.Property("withCTEidentifier")), tokenLookup);
-                            method.Query.CTEexpression = interpolate(getString(joQuery.Property("withCTEexpression")), tokenLookup);
 
-                            // Parse "xmlns:prefix": "http://uri.example.org/namespace" properties for WITH XMLNAMESPACES:
-                            // TODO: Are xmlns namespace prefixes case-insensitive?
-                            method.Query.XMLNamespaces = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                            foreach (var jpXmlns in joQuery.Properties())
+                            // Check what type of query descriptor this is:
+                            var sql = getString(joQuery.Property("sql")).Interpolate(tokenLookup);
+                            if (sql != null)
                             {
-                                if (!jpXmlns.Name.StartsWith("xmlns:")) continue;
-                                method.Query.XMLNamespaces.Add(jpXmlns.Name.Substring(6), interpolate(getString(jpXmlns), tokenLookup));
+                                // Raw SQL query; it must be a SELECT query but we can't validate that without
+                                // some nasty parsing.
+
+                                // Remove comments from the code:
+                                sql = stripSQLComments(sql);
+                                method.Query.SQL = sql;
                             }
-
+                            else
                             {
+                                // Parse the separated form of a query; this ensures that a SELECT query form is
+                                // constructed.
+
+                                // 'select' is required:
+                                method.Query.Select = getString(joQuery.Property("select")).Interpolate(tokenLookup);
+                                // The rest are optional:
+                                method.Query.From = getString(joQuery.Property("from")).Interpolate(tokenLookup);
+                                method.Query.Where = getString(joQuery.Property("where")).Interpolate(tokenLookup);
+                                method.Query.GroupBy = getString(joQuery.Property("groupBy")).Interpolate(tokenLookup);
+                                method.Query.Having = getString(joQuery.Property("having")).Interpolate(tokenLookup);
+                                method.Query.OrderBy = getString(joQuery.Property("orderBy")).Interpolate(tokenLookup);
+                                method.Query.CTEidentifier = getString(joQuery.Property("withCTEidentifier")).Interpolate(tokenLookup);
+                                method.Query.CTEexpression = getString(joQuery.Property("withCTEexpression")).Interpolate(tokenLookup);
+
+                                // Parse "xmlns:prefix": "http://uri.example.org/namespace" properties for WITH XMLNAMESPACES:
+                                // TODO: Are xmlns namespace prefixes case-insensitive?
+                                method.Query.XMLNamespaces = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                foreach (var jpXmlns in joQuery.Properties())
+                                {
+                                    if (!jpXmlns.Name.StartsWith("xmlns:")) continue;
+                                    method.Query.XMLNamespaces.Add(jpXmlns.Name.Substring(6), getString(jpXmlns).Interpolate(tokenLookup));
+                                }
+
                                 // Strip out all SQL comments:
                                 string withCTEidentifier = stripSQLComments(method.Query.CTEidentifier);
                                 string withCTEexpression = stripSQLComments(method.Query.CTEexpression);
