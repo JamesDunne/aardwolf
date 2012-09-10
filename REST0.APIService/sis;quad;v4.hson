@@ -1,10 +1,7 @@
-﻿{
+﻿// Version "sis;quad;v4":
+{
     "base": "sis;quad;v3",
     "methods": {
-        // We remove the "Questionable" method here by setting it to `null`. Requests to use it are
-        // given a "400 Bad Request" response.
-        "Questionable": null,
-        // Add a new method:
         "GetStudentsByLastName": {
             "parameters": {
                 "lastName":     { "sqlName": "@lastName",   "type": "LastName" }
