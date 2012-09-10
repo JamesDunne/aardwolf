@@ -61,6 +61,8 @@ namespace System.Hson
     public sealed class HsonReader : StreamReader
     {
         readonly IEnumerator<char> hsonStripper;
+        readonly bool detectEncodingFromByteOrderMarks;
+        readonly int bufferSize;
 
         #region Constructors
 
@@ -107,15 +109,23 @@ namespace System.Hson
         public HsonReader(Stream stream, Encoding encoding, bool detectEncodingFromByteOrderMarks, int bufferSize)
             : base(stream, encoding, detectEncodingFromByteOrderMarks, bufferSize)
         {
-            hsonStripper = StripHSON();
-            EmitterOptions = new JsonEmitterOptions() { WhitespaceHandling = JsonWhitespaceHandling.NoWhitespace };
+            this.detectEncodingFromByteOrderMarks = detectEncodingFromByteOrderMarks;
+            this.bufferSize = bufferSize;
+            this.hsonStripper = StripHSON();
+            // Defaults:
+            this.EmitterOptions = new JsonEmitterOptions() { WhitespaceHandling = JsonWhitespaceHandling.NoWhitespace };
+            this.ImportStream = defaultFileImport;
         }
 
         public HsonReader(string path, Encoding encoding, bool detectEncodingFromByteOrderMarks, int bufferSize)
             : base(path, encoding, detectEncodingFromByteOrderMarks, bufferSize)
         {
-            hsonStripper = StripHSON();
-            EmitterOptions = new JsonEmitterOptions() { WhitespaceHandling = JsonWhitespaceHandling.NoWhitespace };
+            this.detectEncodingFromByteOrderMarks = detectEncodingFromByteOrderMarks;
+            this.bufferSize = bufferSize;
+            this.hsonStripper = StripHSON();
+            // Defaults:
+            this.EmitterOptions = new JsonEmitterOptions() { WhitespaceHandling = JsonWhitespaceHandling.NoWhitespace };
+            this.ImportStream = defaultFileImport;
         }
 
         #endregion
@@ -126,6 +136,26 @@ namespace System.Hson
         /// Gets a mutable class that controls the JSON emitter options.
         /// </summary>
         public JsonEmitterOptions EmitterOptions { get; private set; }
+
+        /// <summary>
+        /// Gets or sets a function used to import other HSON streams via the @import("path") directive.
+        /// </summary>
+        public Func<string, HsonReader> ImportStream { get; set; }
+
+        #endregion
+
+        #region Import
+
+        /// <summary>
+        /// Default file import function.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        HsonReader defaultFileImport(string path)
+        {
+            // Treat paths as relative to current directory.
+            return new HsonReader(path, base.CurrentEncoding, detectEncodingFromByteOrderMarks, bufferSize);
+        }
 
         #endregion
 
@@ -226,67 +256,113 @@ namespace System.Hson
                 }
                 else if (c == '@')
                 {
-                    // Parse the multiline string and emit a JSON string literal while doing so:
                     c = readNext();
                     if (c == -1) throw new HsonParserException(line, col, "Unexpected end of stream");
-                    if (c != '"') throw new HsonParserException(line, col, "Malformed multi-line string literal");
-
-                    if (EmitterOptions.WhitespaceHandling == JsonWhitespaceHandling.OnlySpacesAfterCommaAndColon)
+                    if (c == '"')
                     {
-                        if (lastEmitted == ':' || lastEmitted == ',') yield return ' ';
-                    }
-
-                    // Emit the opening '"':
-                    yield return emit('"');
-
-                    c = readNext();
-                    if (c == -1) throw new HsonParserException(line, col, "Unexpected end of stream");
-                    while (c != -1)
-                    {
-                        // Is it a terminating '"' or a double '""'?
-                        if (c == '"')
+                        // Parse the multiline string and emit a JSON string literal while doing so:
+                        if (EmitterOptions.WhitespaceHandling == JsonWhitespaceHandling.OnlySpacesAfterCommaAndColon)
                         {
-                            c = readNext();
+                            if (lastEmitted == ':' || lastEmitted == ',') yield return ' ';
+                        }
+
+                        // Emit the opening '"':
+                        yield return emit('"');
+
+                        c = readNext();
+                        if (c == -1) throw new HsonParserException(line, col, "Unexpected end of stream");
+                        while (c != -1)
+                        {
+                            // Is it a terminating '"' or a double '""'?
                             if (c == '"')
                             {
-                                // Double quote chars are emitted as a single escaped quote char:
+                                c = readNext();
+                                if (c == '"')
+                                {
+                                    // Double quote chars are emitted as a single escaped quote char:
+                                    yield return emit('\\');
+                                    yield return emit('"');
+                                    c = readNext();
+                                }
+                                else
+                                {
+                                    // Emit the terminating '"' and exit:
+                                    yield return emit('"');
+                                    break;
+                                }
+                            }
+                            else if (c == '\\')
+                            {
+                                // Backslashes have no special meaning in multiline strings, pass them through as escaped:
                                 yield return emit('\\');
-                                yield return emit('"');
+                                yield return emit('\\');
+                                c = readNext();
+                            }
+                            else if (c == '\r')
+                            {
+                                yield return emit('\\');
+                                yield return emit('r');
+                                c = readNext();
+                            }
+                            else if (c == '\n')
+                            {
+                                yield return emit('\\');
+                                yield return emit('n');
                                 c = readNext();
                             }
                             else
                             {
-                                // Emit the terminating '"' and exit:
-                                yield return emit('"');
-                                break;
+                                // Emit any other regular char:
+                                yield return emit((char)c);
+                                c = readNext();
                             }
+                            if (c == -1) throw new HsonParserException(line, col, "Unexpected end of stream");
                         }
-                        else if (c == '\\')
+                    }
+                    else if (Char.IsLetter((char)c))
+                    {
+                        // Read the word up to the next non-word char:
+                        StringBuilder sbDirective = new StringBuilder(6);
+                        sbDirective.Append((char)c);
+                        while ((c = readNext()) != -1)
                         {
-                            // Backslashes have no special meaning in multiline strings, pass them through as escaped:
-                            yield return emit('\\');
-                            yield return emit('\\');
-                            c = readNext();
+                            if (!Char.IsLetter((char)c)) break;
+                            sbDirective.Append((char)c);
                         }
-                        else if (c == '\r')
+                        if (c == -1) throw new HsonParserException(line, col, "Unexpected end of directive");
+
+                        string directive = sbDirective.ToString();
+                        if (directive == "import")
                         {
-                            yield return emit('\\');
-                            yield return emit('r');
+                            // @import directive
+                            if (c != '(') throw new HsonParserException(line, col, "Expected '('");
                             c = readNext();
-                        }
-                        else if (c == '\n')
-                        {
-                            yield return emit('\\');
-                            yield return emit('n');
+                            // Parse a string argument:
+                            if (c != '"') throw new HsonParserException(line, col, "Expected '\"'");
+                            StringBuilder sbValue = new StringBuilder(80);
+                            while ((c = readNext()) != -1)
+                            {
+                                if (c == '"') break;
+                                sbValue.Append((char)c);
+                            }
+                            if (c != '"') throw new HsonParserException(line, col, "Expected '\"'");
                             c = readNext();
+                            if (c != ')') throw new HsonParserException(line, col, "Expected ')'");
+                            c = readNext();
+                            // Call the import function to get an HsonReader to stream its output through to our caller:
+                            string path = sbValue.ToString();
+                            using (var imported = ImportStream(path))
+                                while ((c2 = imported.Read()) != -1)
+                                    yield return (char)c2;
                         }
                         else
                         {
-                            // Emit any other regular char:
-                            yield return emit((char)c);
-                            c = readNext();
+                            throw new HsonParserException(line, col, "Unknown directive, '@{0}'", directive);
                         }
-                        if (c == -1) throw new HsonParserException(line, col, "Unexpected end of stream");
+                    }
+                    else
+                    {
+                        throw new HsonParserException(line, col, "Unknown @directive");
                     }
                 }
                 else if (c == '"')

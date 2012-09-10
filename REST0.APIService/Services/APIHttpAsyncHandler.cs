@@ -528,7 +528,7 @@ namespace REST0.APIService.Services
             return true;
         }
 
-        private static void parseParameterTypes(IDictionary<string, ParameterTypeDescriptor> parameterTypes, Func<string, string> interpolate, JProperty jpParameterTypes)
+        static void parseParameterTypes(IDictionary<string, ParameterTypeDescriptor> parameterTypes, Func<string, string> interpolate, JProperty jpParameterTypes)
         {
             if (jpParameterTypes != null)
             {

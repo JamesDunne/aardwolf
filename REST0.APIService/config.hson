@@ -24,7 +24,7 @@
     // This is the main set of aliases for services:
     "aliases": {
         "sis;core": "sis;core;v1",
-        "sis;quad": "sis;quad;v3"
+        "sis;quad": "sis;quad;v4"
     },
     // The "$" key indicates a shared dictionary of key/value pairs. This is the global dictionary.
     // Its values may be overridden per service. These values can be interpolated in string literals with
@@ -133,11 +133,9 @@
         },
         "sis;quad;v3": {
             "base": "sis;quad;v2",
-            // Add new parameter types:
             "parameterTypes": {
                 "LastName":     { "type": "nvarchar(50)" }
             },
-            // Methods are removed by assigning `null`:
             "methods": {
                 // We remove the "Questionable" method here by setting it to `null`. Requests to use it are
                 // given a "400 Bad Request" response.
@@ -155,6 +153,11 @@
                     }
                 }
             }
-        }
+        },
+        // Here we introduce the HSON `@import` directive used to directly import HSON from other
+        // local files directly into this document. This helps break out large service offerings
+        // into more manageable divisions. `@import` directives may be placed at any point in the
+        // HSON document, so long as the final result produces a well-formed JSON result.
+        "sis;quad;v4": @import("sis;quad;v4.hson")
     }
 }
