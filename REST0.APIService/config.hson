@@ -17,6 +17,8 @@
     `GET /data/serviceName/methodName?params`
   Examples:
     `GET /data/sis;quad/GetStudent?id=1`
+
+  A request parameter may be assigned an explicit NULL value via `param=#00`, i.e. encoding the NUL character in the URL.
 */
 {
     // This is the main set of aliases for services:
@@ -55,12 +57,12 @@
                 // Password:
                 //"pwd": "password"
             },
-            // This is where we define common parameter types:
+            // This is where we define common parameter types. These are inherited in derived services.
             "parameterTypes": {
-                "StudentID": { "type": "int" },
-                "FirstName": { "type": "nvarchar(50)" },
-                "DateTimeOffset": { "type": "datetimeoffset(7)" },
-                "Grade": { "type": "decimal(8,4)" }
+                "StudentID":        { "type": "int" },
+                "FirstName":        { "type": "nvarchar(50)" },
+                "DateTimeOffset":   { "type": "datetimeoffset(7)" },
+                "Grade":            { "type": "decimal(8,4)" }
             },
             // This is the main method definition section:
             "methods": {
@@ -68,7 +70,7 @@
                 "GetStudent": {
                     // This is the mapping of which query-string parameter names map to which SQL parameters:
                     "parameters": {
-                        "id": { "sqlName": "@id", "type": "StudentID" }
+                        "id":       { "sqlName": "@id", "type": "StudentID" }
                     },
                     // The individual clauses of the SELECT query, appearing in any order:
                     "query": {
@@ -84,10 +86,11 @@
                 },
                 "Test": {
                     "parameters": {
-                        "test": { "sqlName": "@test", "type": "Grade", "optional": true }
+                        // Add `"optional": true` to make a parameter optional; its default value will be NULL in that case.
+                        "test":     { "sqlName": "@test",   "type": "Grade",    "optional": true }
                     },
                     "query": {
-                        "select":       "@test AS Test"
+                        "select":   "@test AS Test"
                     }
                 }
             }
@@ -103,10 +106,13 @@
                 // Define a Questionable method to demonstrate deprecation:
                 "Questionable": {
                     "parameters": {
-                        "id": { "sqlName": "@id", "type": "StudentID" },
-                        "test": { "sqlName": "@test", "type": "Grade", "optional": true }
+                        "id":       { "sqlName": "@id",     "type": "StudentID" },
+                        "test":     { "sqlName": "@test",   "type": "Grade",    "optional": true }
                     },
                     "query": {
+                        // Adding a property name starting with "xmlns:" will add a ;WITH XMLNAMESPACES directive
+                        // useful for selecting data from `xml` typed columns in your query. This example does not
+                        // use it currently.
                         "xmlns:sis":    "http://sis.example.org/sis/core/v1",
                         "from":         "${Student} st",
                         "where":        "st.WrongID = @id",
