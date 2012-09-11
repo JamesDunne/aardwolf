@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using REST0.Definition;
-using REST0.Implementation;
 
-namespace REST0
+namespace REST0.TestNull
 {
     class Program
     {
