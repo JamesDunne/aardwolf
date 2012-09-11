@@ -19,8 +19,10 @@ Benchmarks
 ----------
 
 GET /
+
 200 OK - empty response
 
+```
 Connections, Requests/Second
          15, 59107
          17, 59935
@@ -51,7 +53,9 @@ Connections, Requests/Second
         651, 62124
         812, 61771
         960, 61521
+```
 
+```
 **Test system:**
 Windows 7 Ultimate x64 SP1
 Intel Core i5-2500K @ 3.30GHz
@@ -61,6 +65,7 @@ Crucial SSD 64GB, C300-CTFDDAC064MAG
 WEI(processor): 7.6
 WEI(ram):       7.6
 WEI(disk):      7.6
+```
 
 Mono support
 ------------
