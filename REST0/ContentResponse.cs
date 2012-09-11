@@ -16,7 +16,7 @@ namespace REST0
             this.response = response;
         }
 
-        public async Task Execute(IHttpRequestResponseContext context)
+        public override async Task Execute(IHttpRequestResponseContext context)
         {
             SetStatus(context);
             context.Response.ContentLength64 = response.Length;

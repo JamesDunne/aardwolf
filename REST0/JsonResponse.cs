@@ -5,12 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-#if MS
-using System.Json;
-#else
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-#endif
 
 #pragma warning disable 1998
 
@@ -26,7 +22,7 @@ namespace REST0
             _value = value;
         }
 
-        public async Task Execute(IHttpRequestResponseContext context)
+        public override async Task Execute(IHttpRequestResponseContext context)
         {
             SetStatus(context);
             context.Response.ContentType = "application/json; charset=utf-8";

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace REST0
 {
-    public abstract class StatusResponse
+    public abstract class StatusResponse : IHttpResponseAction
     {
         protected readonly int statusCode;
         protected readonly string statusDescription;
@@ -22,5 +22,7 @@ namespace REST0
             context.Response.StatusCode = statusCode;
             context.Response.StatusDescription = statusDescription;
         }
+
+        public abstract Task Execute(IHttpRequestResponseContext context);
     }
 }
