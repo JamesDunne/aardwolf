@@ -10,13 +10,16 @@ using System.Threading.Tasks;
 
 namespace REST0
 {
-    public class JsonResult : StatusResponse, IHttpResponseAction
+    public class JsonResult : IHttpResponseAction
     {
         // NOTE(jsd): Fields are serialized to JSON in lexical definition order.
         public readonly bool success;
 
         // NOTE(jsd): This is here primarily for JSONP compatibility.
         public readonly int statusCode;
+
+        [JsonIgnore]
+        readonly string statusDescription;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly string message;
@@ -32,9 +35,9 @@ namespace REST0
         public readonly object results;
 
         public JsonResult(int statusCode, string failureMessage)
-            : base(statusCode, failureMessage)
         {
             this.statusCode = statusCode;
+            statusDescription = failureMessage;
             success = false;
             message = failureMessage;
             errors = null;
@@ -43,9 +46,9 @@ namespace REST0
         }
 
         public JsonResult(int statusCode, string failureMessage, object errorData)
-            : base(statusCode, failureMessage)
         {
             this.statusCode = statusCode;
+            statusDescription = failureMessage;
             success = false;
             message = failureMessage;
             errors = errorData;
@@ -54,9 +57,9 @@ namespace REST0
         }
 
         public JsonResult(object successfulResults)
-            : base(200, "OK")
         {
             statusCode = 200;
+            statusDescription = "OK";
             success = true;
             message = null;
             errors = null;
@@ -65,9 +68,9 @@ namespace REST0
         }
 
         public JsonResult(object successfulResults, object metaData)
-            : base(200, "OK")
         {
             statusCode = 200;
+            statusDescription = "OK";
             success = true;
             message = null;
             errors = null;
@@ -75,9 +78,10 @@ namespace REST0
             meta = metaData;
         }
 
-        public override async Task Execute(IHttpRequestResponseContext context)
+        public async Task Execute(IHttpRequestResponseContext context)
         {
-            SetStatus(context);
+            context.Response.StatusCode = statusCode;
+            context.Response.StatusDescription = statusDescription;
             context.Response.ContentType = "application/json; charset=utf-8";
             context.Response.ContentEncoding = UTF8.WithoutBOM;
 
