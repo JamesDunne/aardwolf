@@ -84,10 +84,18 @@ namespace REST0
 
                 _listener.IgnoreWriteExceptions = true;
 
-                // Start the HTTP listener:
-                _listener.Start();
+                try
+                {
+                    // Start the HTTP listener:
+                    _listener.Start();
+                }
+                catch (HttpListenerException hlex)
+                {
+                    Console.Error.WriteLine(hlex.Message);
+                    return;
+                }
 
-                // Accept a request:
+                // Start accepting requests:
                 _listener.BeginGetContext(ProcessNewContext, this);
 
                 new ManualResetEvent(false).WaitOne();
