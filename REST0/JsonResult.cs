@@ -37,7 +37,7 @@ namespace REST0
         public JsonResult(int statusCode, string failureMessage)
         {
             this.statusCode = statusCode;
-            statusDescription = failureMessage;
+            //statusDescription = failureMessage;
             success = false;
             message = failureMessage;
             errors = null;
@@ -48,7 +48,7 @@ namespace REST0
         public JsonResult(int statusCode, string failureMessage, object errorData)
         {
             this.statusCode = statusCode;
-            statusDescription = failureMessage;
+            //statusDescription = failureMessage;
             success = false;
             message = failureMessage;
             errors = errorData;
@@ -81,7 +81,8 @@ namespace REST0
         public async Task Execute(IHttpRequestResponseContext context)
         {
             context.Response.StatusCode = statusCode;
-            context.Response.StatusDescription = statusDescription;
+            if (statusDescription != null)
+                context.Response.StatusDescription = statusDescription;
             context.Response.ContentType = "application/json; charset=utf-8";
             context.Response.ContentEncoding = UTF8.WithoutBOM;
 
