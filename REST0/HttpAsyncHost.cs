@@ -50,10 +50,12 @@ namespace REST0
             ServicePointManager.SetTcpKeepAlive(true, 5000, 500);
             ServicePointManager.DefaultConnectionLimit = 10000;
             ServicePointManager.Expect100Continue = false;
-            ServicePointManager.MaxServicePoints = 01000;
+            ServicePointManager.MaxServicePoints = 10000;
 
             // Establish a host-handler context:
             _hostContext = new HostContext(this, _handler);
+
+            _listener.IgnoreWriteExceptions = true;
 
             // Add the server bindings:
             foreach (var prefix in uriPrefixes)
@@ -82,8 +84,6 @@ namespace REST0
                         if (!await task) return;
                 }
 
-                _listener.IgnoreWriteExceptions = true;
-
                 try
                 {
                     // Start the HTTP listener:
@@ -95,33 +95,38 @@ namespace REST0
                     return;
                 }
 
-                // Start accepting requests:
-                _listener.BeginGetContext(ProcessNewContext, this);
+                // Accept connections:
+                // Higher values mean more connections can be maintained yet at a much slower average response time; fewer connections will be rejected.
+                // Lower values mean less connections can be maintained yet at a much faster average response time; more connections will be rejected.
+                var sem = new Semaphore(128, 128);
 
-                new ManualResetEvent(false).WaitOne();
+                while (true)
+                {
+                    sem.WaitOne();
+
+#pragma warning disable 4014
+                    _listener.GetContextAsync().ContinueWith(async (t) =>
+                    {
+                        string errMessage;
+
+                        try
+                        {
+                            sem.Release();
+
+                            var ctx = await t;
+                            await ProcessListenerContext(ctx, this);
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            errMessage = ex.ToString();
+                        }
+
+                        await Console.Error.WriteLineAsync(errMessage);
+                    });
+#pragma warning restore 4014
+                }
             }).Wait();
-        }
-
-        static async void ProcessNewContext(IAsyncResult ar)
-        {
-            var host = (HttpAsyncHost)ar.AsyncState;
-
-            HttpListenerContext listenerContext;
-            try
-            {
-                // Get the context:
-                listenerContext = host._listener.EndGetContext(ar);
-
-                host._listener.BeginGetContext(ProcessNewContext, host);
-            }
-            catch (Exception ex)
-            {
-                // TODO: better exception handling
-                Trace.WriteLine(ex.ToString());
-                return;
-            }
-
-            await ProcessListenerContext(listenerContext, host);
         }
 
         static async Task ProcessListenerContext(HttpListenerContext listenerContext, HttpAsyncHost host)
