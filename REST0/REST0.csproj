@@ -67,7 +67,7 @@
     <Compile Include="HttpAsyncHost.cs" />
     <Compile Include="HttpRequestContext.cs" />
     <Compile Include="HttpRequestResponseContext.cs" />
-    <Compile Include="JsonResult.cs" />
+    <Compile Include="JsonRootResponse.cs" />
     <Compile Include="JsonResultException.cs" />
     <Compile Include="NullHttpAsyncHandler.cs" />
     <Compile Include="TeeTextReader.cs" />

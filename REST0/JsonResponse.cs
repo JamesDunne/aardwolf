@@ -26,11 +26,13 @@ namespace REST0
         {
             SetStatus(context);
             context.Response.ContentType = "application/json; charset=utf-8";
-            context.Response.ContentEncoding = UTF8.WithoutBOM;
+            //context.Response.ContentEncoding = UTF8.WithoutBOM;
 
             using (context.Response.OutputStream)
-            using (var tw = new StreamWriter(context.Response.OutputStream, UTF8.WithoutBOM))
+            {
+                var tw = new StreamWriter(context.Response.OutputStream, UTF8.WithoutBOM);
                 Json.Serializer.Serialize(tw, _value);
+            }
         }
     }
 }

@@ -20,7 +20,8 @@ namespace REST0
         protected void SetStatus(IHttpRequestResponseContext context)
         {
             context.Response.StatusCode = statusCode;
-            context.Response.StatusDescription = statusDescription;
+            if (statusDescription != null)
+                context.Response.StatusDescription = statusDescription;
         }
 
         public abstract Task Execute(IHttpRequestResponseContext context);

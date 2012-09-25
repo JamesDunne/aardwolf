@@ -10,13 +10,14 @@ using System.Threading.Tasks;
 
 namespace REST0
 {
-    public class JsonResult : IHttpResponseAction
+    public class JsonRootResponse : IHttpResponseAction
     {
         // NOTE(jsd): Fields are serialized to JSON in lexical definition order.
-        public readonly bool success;
 
         // NOTE(jsd): This is here primarily for JSONP compatibility.
         public readonly int statusCode;
+
+        public readonly bool success;
 
         [JsonIgnore]
         readonly string statusDescription;
@@ -25,16 +26,28 @@ namespace REST0
         public readonly string message;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly object errors;
+        public readonly object meta;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly object meta;
+        public readonly object errors;
 
         // NOTE(jsd): `results` must be last.
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly object results;
 
-        public JsonResult(int statusCode, string failureMessage)
+        public JsonRootResponse(int statusCode = 200, string statusDescription = null, string message = null, object meta = null, object[] errors = null, object results = null)
+        {
+            this.statusCode = statusCode;
+            this.statusDescription = statusDescription;
+            this.success = errors == null;
+            this.message = message;
+            this.meta = meta;
+            this.errors = errors;
+            this.results = results;
+        }
+
+#if false
+        public JsonRootResult(int statusCode, string failureMessage)
         {
             this.statusCode = statusCode;
             //statusDescription = failureMessage;
@@ -45,7 +58,7 @@ namespace REST0
             meta = null;
         }
 
-        public JsonResult(int statusCode, string failureMessage, object errorData)
+        public JsonRootResult(int statusCode, string failureMessage, object errorData)
         {
             this.statusCode = statusCode;
             //statusDescription = failureMessage;
@@ -56,7 +69,7 @@ namespace REST0
             meta = null;
         }
 
-        public JsonResult(object successfulResults)
+        public JsonRootResult(object successfulResults)
         {
             statusCode = 200;
             statusDescription = "OK";
@@ -67,7 +80,7 @@ namespace REST0
             meta = null;
         }
 
-        public JsonResult(object successfulResults, object metaData)
+        public JsonRootResult(object successfulResults, object metaData)
         {
             statusCode = 200;
             statusDescription = "OK";
@@ -77,6 +90,7 @@ namespace REST0
             results = successfulResults;
             meta = metaData;
         }
+#endif
 
         public async Task Execute(IHttpRequestResponseContext context)
         {
@@ -84,6 +98,9 @@ namespace REST0
             if (statusDescription != null)
                 context.Response.StatusDescription = statusDescription;
             context.Response.ContentType = "application/json; charset=utf-8";
+            // NOTE(jsd): Not concerned at all about setting ContentLength64.
+
+            // NOTE(jsd): This seems to be a hot line re: performance.
             //context.Response.ContentEncoding = UTF8.WithoutBOM;
 
 #if true
@@ -93,6 +110,8 @@ namespace REST0
                 Json.Serializer.Serialize(tw, this);
             }
 #else
+            // NOTE(jsd): Just testing out some stuff here...
+
             var sb = new StringBuilder(1024);
             using (var sw = new StringWriter(sb))
             {
