@@ -14,11 +14,22 @@ namespace REST0
         IHttpAsyncHandler _handler;
         HostContext _hostContext;
         ConfigurationDictionary _configValues;
+        readonly int _accepts;
 
-        public HttpAsyncHost(IHttpAsyncHandler handler)
+        /// <summary>
+        /// Creates an asynchronous HTTP host.
+        /// </summary>
+        /// <param name="handler">Handler to serve requests with</param>
+        /// <param name="accepts">
+        /// Higher values mean more connections can be maintained yet at a much slower average response time; fewer connections will be rejected.
+        /// Lower values mean less connections can be maintained yet at a much faster average response time; more connections will be rejected.
+        /// </param>
+        public HttpAsyncHost(IHttpAsyncHandler handler, int accepts = 4)
         {
             _handler = handler ?? NullHttpAsyncHandler.Default;
             _listener = new HttpListener();
+            // Multiply by number of cores:
+            _accepts = accepts * Environment.ProcessorCount;
         }
 
         class HostContext : IHttpAsyncHostHandlerContext
@@ -45,13 +56,6 @@ namespace REST0
 
         public void Run(params string[] uriPrefixes)
         {
-            //ServicePointManager.EnableDnsRoundRobin = false;
-            ServicePointManager.UseNagleAlgorithm = false;
-            ServicePointManager.SetTcpKeepAlive(true, 5000, 500);
-            ServicePointManager.DefaultConnectionLimit = 10000;
-            ServicePointManager.Expect100Continue = false;
-            ServicePointManager.MaxServicePoints = 10000;
-
             // Establish a host-handler context:
             _hostContext = new HostContext(this, _handler);
 
@@ -98,7 +102,7 @@ namespace REST0
                 // Accept connections:
                 // Higher values mean more connections can be maintained yet at a much slower average response time; fewer connections will be rejected.
                 // Lower values mean less connections can be maintained yet at a much faster average response time; more connections will be rejected.
-                var sem = new Semaphore(64, 64);
+                var sem = new Semaphore(_accepts, _accepts);
 
                 while (true)
                 {

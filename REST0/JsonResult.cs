@@ -84,11 +84,36 @@ namespace REST0
             if (statusDescription != null)
                 context.Response.StatusDescription = statusDescription;
             context.Response.ContentType = "application/json; charset=utf-8";
-            context.Response.ContentEncoding = UTF8.WithoutBOM;
+            //context.Response.ContentEncoding = UTF8.WithoutBOM;
 
+#if true
             using (context.Response.OutputStream)
-            using (var tw = new StreamWriter(context.Response.OutputStream, UTF8.WithoutBOM))
+            {
+                var tw = new StreamWriter(context.Response.OutputStream, UTF8.WithoutBOM);
                 Json.Serializer.Serialize(tw, this);
+            }
+#else
+            var sb = new StringBuilder(1024);
+            using (var sw = new StringWriter(sb))
+            {
+                Json.Serializer.Serialize(sw, this);
+            }
+
+            // Char count or byte count?
+            context.Response.ContentLength64 = sb.Length;
+            var str = context.Response.OutputStream;
+            var enc = UTF8.WithoutBOM;
+
+            // NOTE: bad buffering here; number of bytes != number of chars
+            // Doesn't seem to speed anything up either.
+            byte[] buf = new byte[4096];
+            for (int i = 0; i < sb.Length; i += 4096)
+            {
+                string tmp = sb.ToString(i, Math.Min(4096, sb.Length - i));
+                int count = UTF8.WithoutBOM.GetBytes(tmp, 0, tmp.Length, buf, 0);
+                await str.WriteAsync(buf, 0, count);
+            }
+#endif
         }
     }
 }
