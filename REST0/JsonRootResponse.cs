@@ -39,58 +39,12 @@ namespace REST0
         {
             this.statusCode = statusCode;
             this.statusDescription = statusDescription;
-            this.success = errors == null;
+            this.success = statusCode == 200;
             this.message = message;
             this.meta = meta;
             this.errors = errors;
             this.results = results;
         }
-
-#if false
-        public JsonRootResult(int statusCode, string failureMessage)
-        {
-            this.statusCode = statusCode;
-            //statusDescription = failureMessage;
-            success = false;
-            message = failureMessage;
-            errors = null;
-            results = null;
-            meta = null;
-        }
-
-        public JsonRootResult(int statusCode, string failureMessage, object errorData)
-        {
-            this.statusCode = statusCode;
-            //statusDescription = failureMessage;
-            success = false;
-            message = failureMessage;
-            errors = errorData;
-            results = null;
-            meta = null;
-        }
-
-        public JsonRootResult(object successfulResults)
-        {
-            statusCode = 200;
-            statusDescription = "OK";
-            success = true;
-            message = null;
-            errors = null;
-            results = successfulResults;
-            meta = null;
-        }
-
-        public JsonRootResult(object successfulResults, object metaData)
-        {
-            statusCode = 200;
-            statusDescription = "OK";
-            success = true;
-            message = null;
-            errors = null;
-            results = successfulResults;
-            meta = metaData;
-        }
-#endif
 
         public async Task Execute(IHttpRequestResponseContext context)
         {
@@ -103,7 +57,7 @@ namespace REST0
             // NOTE(jsd): This seems to be a hot line re: performance.
             //context.Response.ContentEncoding = UTF8.WithoutBOM;
 
-#if true
+#if false
             var rsp = context.Response.OutputStream;
             using (rsp)
             {
@@ -113,27 +67,24 @@ namespace REST0
             }
 #else
             // NOTE(jsd): Just testing out some stuff here...
-
             var sb = new StringBuilder(1024);
             using (var sw = new StringWriter(sb))
             {
                 Json.Serializer.Serialize(sw, this);
             }
 
-            // Char count or byte count?
-            context.Response.ContentLength64 = sb.Length;
             var rsp = context.Response.OutputStream;
             var enc = UTF8.WithoutBOM;
 
-            // NOTE: bad buffering here; number of bytes != number of chars
-            // Doesn't seem to speed anything up either.
-            byte[] buf = new byte[4096];
-            for (int i = 0; i < sb.Length; i += 4096)
-            {
-                string tmp = sb.ToString(i, Math.Min(4096, sb.Length - i));
-                int count = enc.GetBytes(tmp, 0, tmp.Length, buf, 0);
-                await rsp.WriteAsync(buf, 0, count);
-            }
+            // Get the response as a single string instance (horrible but apparently the only way to easily calculate
+            // the byte count of the response):
+            var text = sb.ToString();
+            var bytes = enc.GetBytes(text);
+
+            // Set the length header:
+            context.Response.ContentLength64 = bytes.LongLength;
+            // Write the response:
+            await rsp.WriteAsync(bytes, 0, bytes.Length);
 #endif
         }
     }
