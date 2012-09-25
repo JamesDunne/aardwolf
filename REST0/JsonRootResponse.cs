@@ -104,10 +104,12 @@ namespace REST0
             //context.Response.ContentEncoding = UTF8.WithoutBOM;
 
 #if true
-            using (context.Response.OutputStream)
+            var rsp = context.Response.OutputStream;
+            using (rsp)
             {
-                var tw = new StreamWriter(context.Response.OutputStream, UTF8.WithoutBOM);
+                var tw = new StreamWriter(rsp, UTF8.WithoutBOM);
                 Json.Serializer.Serialize(tw, this);
+                tw.Close();
             }
 #else
             // NOTE(jsd): Just testing out some stuff here...
@@ -120,7 +122,7 @@ namespace REST0
 
             // Char count or byte count?
             context.Response.ContentLength64 = sb.Length;
-            var str = context.Response.OutputStream;
+            var rsp = context.Response.OutputStream;
             var enc = UTF8.WithoutBOM;
 
             // NOTE: bad buffering here; number of bytes != number of chars
@@ -129,8 +131,8 @@ namespace REST0
             for (int i = 0; i < sb.Length; i += 4096)
             {
                 string tmp = sb.ToString(i, Math.Min(4096, sb.Length - i));
-                int count = UTF8.WithoutBOM.GetBytes(tmp, 0, tmp.Length, buf, 0);
-                await str.WriteAsync(buf, 0, count);
+                int count = enc.GetBytes(tmp, 0, tmp.Length, buf, 0);
+                await rsp.WriteAsync(buf, 0, count);
             }
 #endif
         }
