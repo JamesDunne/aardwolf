@@ -98,7 +98,7 @@ namespace REST0
                 // Accept connections:
                 // Higher values mean more connections can be maintained yet at a much slower average response time; fewer connections will be rejected.
                 // Lower values mean less connections can be maintained yet at a much faster average response time; more connections will be rejected.
-                var sem = new Semaphore(128, 128);
+                var sem = new Semaphore(64, 64);
 
                 while (true)
                 {

@@ -13,7 +13,7 @@ namespace REST0.TestNull
         {
             var host = new HttpAsyncHost(null);
 
-            host.Run("http://*:80/");
+            host.Run("http://+/");
         }
     }
 }
