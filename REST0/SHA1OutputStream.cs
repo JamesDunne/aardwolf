@@ -18,7 +18,7 @@ namespace REST0
             this.output = output;
 
             this.sha1 = SHA1.Create();
-            this.position = 0;
+            this.position = 0L;
         }
 
         public override bool CanRead { get { return false; } }
