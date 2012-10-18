@@ -70,6 +70,7 @@
     <Compile Include="JsonRootResponse.cs" />
     <Compile Include="JsonResultException.cs" />
     <Compile Include="NullHttpAsyncHandler.cs" />
+    <Compile Include="RestfulLink.cs" />
     <Compile Include="TeeTextReader.cs" />
     <Compile Include="Json.cs" />
     <Compile Include="SHA1TextReader.cs" />

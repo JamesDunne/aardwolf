@@ -26,6 +26,9 @@ namespace REST0
         public readonly string message;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly RestfulLink[] links;
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly object meta;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -35,12 +38,13 @@ namespace REST0
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly object results;
 
-        public JsonRootResponse(int statusCode = 200, string statusDescription = null, string message = null, object meta = null, object[] errors = null, object results = null)
+        public JsonRootResponse(int statusCode = 200, string statusDescription = null, string message = null, RestfulLink[] links = null, object meta = null, object[] errors = null, object results = null)
         {
             this.statusCode = statusCode;
             this.statusDescription = statusDescription;
             this.success = statusCode == 200;
             this.message = message;
+            this.links = links;
             this.meta = meta;
             this.errors = errors;
             this.results = results;

@@ -26,5 +26,11 @@ namespace System
             }
             return new string(c, 0, i * 2);
         }
+
+        public static string AsNullIfEmpty(this string value)
+        {
+            if (String.IsNullOrEmpty(value)) return null;
+            return value;
+        }
     }
 }
