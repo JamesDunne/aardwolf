@@ -20,7 +20,7 @@ namespace REST0
         public readonly bool success;
 
         [JsonIgnore]
-        readonly string statusDescription;
+        public readonly string statusDescription;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly string message;
@@ -32,7 +32,7 @@ namespace REST0
         public readonly object meta;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly object errors;
+        public readonly object[] errors;
 
         // NOTE(jsd): `results` must be last.
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
