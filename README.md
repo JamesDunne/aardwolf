@@ -1,19 +1,19 @@
-REST0
-=====
+Aardwolf
+========
 
-REST0 (aka REST-zero) is a zero-overhead HTTP RESTful API service provider for C# that does not depend on ASP.NET nor
-IIS. REST0 is based on the HttpListener API provided as part of the .NET framework and the Windows implementation
+Aardwolf is an asynchronous HTTP API service provider for C# that does not depend on ASP.NET nor
+IIS. Aardwolf is based on the HttpListener API provided as part of the .NET framework and the Windows implementation
 makes use of the low-level HTTP.SYS driver to handle and queue HTTP requests in the kernel and forward those to
 user-mode applications. IIS versions 6 and up make use of this same HTTP.SYS driver so it is a trusted and well-tested
 component that can be relied upon for production scenarios.
 
-The REST0 framework builds an asynchronous request event loop to handle HTTP requests, taking full advantage of the
+The Aardwolf framework builds an asynchronous request event loop to handle HTTP requests, taking full advantage of the
 asynchronous features of the .NET 4.5 framework. A very simple and efficient C# library is exposed to the developer
 who wants to write fast, asynchronous web services or web sites.
 
 At this time, the framework is solid and runs very efficiently. However, it is incomplete with regard to features.
 
-For an example which uses this framework, see my rest0-api project at https://github.com/JamesDunne/rest0-api
+For an example which uses this framework, see my rest0 project at https://github.com/JamesDunne/rest0-api
 
 Benchmarks
 ----------
