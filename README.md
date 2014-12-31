@@ -1,3 +1,5 @@
+NOTE: I'm not actively supporting this project. Please use at your own risk.
+
 Aardwolf
 ========
 
